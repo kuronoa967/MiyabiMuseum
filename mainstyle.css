@@ -1,0 +1,446 @@
+/* ==========================================================================
+   1. 変数定義 & 基本設定
+   ========================================================================== */
+:root {
+  --bg-color: #080808;       /* 漆黒の壁面 */
+  --mat-color: #161616;      /* 高級マット台紙 */
+  --accent-color: #d4af37;   /* 静かなゴールド */
+  --text-main: #e0e0e0;      /* プレートのメイン文字 */
+  --text-sub: #8a8a8a;       /* プレートのサブ文字 */
+  --max-width: 1600px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+.gallery-body {
+  background-color: var(--bg-color);
+  color: var(--text-main);
+  font-family: 'Noto Serif JP', serif;
+  font-weight: 300;
+  min-height: 100-screen;
+  display: flex;
+  flex-direction: column;
+}
+
+[v-cloak] {
+  display: none;
+}
+
+/* ==========================================================================
+   2. ヘッダーのデザイン
+   ========================================================================== */
+.main-header {
+  background-color: var(--bg-color);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  backdrop-filter: blur(8px);
+  background-opacity: 0.95;
+}
+
+.header-container {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 1rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.gallery-logo {
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: var(--accent-color);
+  tracking-widest: 0.15em;
+  letter-spacing: 0.15em;
+}
+
+@media (min-width: 768px) {
+  .gallery-logo { font-size: 1.5rem; }
+}
+
+.navigation-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-r: 1px solid rgba(255, 255, 255, 0.1);
+  padding-right: 1rem;
+  font-size: 0.75rem;
+  color: var(--text-sub);
+}
+
+@media (min-width: 768px) {
+  .user-profile { font-size: 0.875rem; }
+}
+
+.user-profile i {
+  color: rgba(212, 175, 55, 0.7);
+}
+
+.btn-add-exhibit {
+  background: transparent;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  color: var(--accent-color);
+  padding: 0.4rem 1rem;
+  font-size: 0.75rem;
+  font-family: inherit;
+  border-radius: 4px;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: all 0.3s ease;
+}
+
+@media (min-width: 768px) {
+  .btn-add-exhibit { font-size: 0.875rem; }
+}
+
+.btn-add-exhibit i {
+  margin-right: 0.4rem;
+  font-size: 0.65rem;
+}
+
+.btn-add-exhibit:hover {
+  background-color: var(--accent-color);
+  color: var(--bg-color);
+}
+
+.btn-logout {
+  background: transparent;
+  border: none;
+  color: var(--text-sub);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  padding-left: 0.25rem;
+}
+
+.btn-logout:hover {
+  color: #fff;
+}
+
+/* ==========================================================================
+   3. メイン壁面（コンテンツエリア）
+   ========================================================================== */
+.main-exhibition {
+  flex-grow: 1;
+  max-width: var(--max-width);
+  width: 100%;
+  margin: 0 auto;
+  padding: 3rem 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .main-exhibition { padding: 4rem 1.5rem; }
+}
+
+.wall-branding {
+  text-align: center;
+  margin-bottom: 4rem;
+}
+
+.section-subtitle {
+  font-size: 0.75rem;
+  letter-spacing: 0.3em;
+  margin-bottom: 0.75rem;
+}
+
+.section-title {
+  font-size: 1.5rem;
+  color: var(--accent-color);
+  font-weight: 300;
+  letter-spacing: 0.05em;
+}
+
+@media (min-width: 768px) {
+  .section-title { font-size: 1.875rem; }
+}
+
+.branding-line {
+  width: 3rem;
+  height: 1px;
+  background-color: var(--accent-color);
+  margin: 1.5rem auto 0;
+  opacity: 0.3;
+}
+
+/* ==========================================================================
+   4. Masonry（石積み）＆ 高級額縁
+   ========================================================================== */
+.gallery-columns {
+  column-count: 1;
+  column-gap: 2.5rem;
+}
+
+@media (min-width: 640px) { .gallery-columns { column-count: 2; } }
+@media (min-width: 1024px) { .gallery-columns { column-count: 3; } }
+@media (min-width: 1280px) { .gallery-columns { column-count: 4; } }
+
+.gallery-item {
+  break-inside: avoid;
+  margin-bottom: 3rem;
+  cursor: pointer;
+}
+
+/* 高級額縁（モールディング） */
+.museum-frame {
+  position: relative;
+  background: linear-gradient(135deg, #a37a2d 0%, #e2c575 25%, #b08a3b 50%, #f1dc99 75%, #88621b 100%);
+  padding: 14px;
+  box-shadow: 
+    0 30px 60px -15px rgba(0, 0, 0, 0.9),
+    inset 3px 3px 5px rgba(255, 255, 255, 0.3),
+    inset -3px -3px 5px rgba(0, 0, 0, 0.5);
+  transition: transform 0.5s ease, box-shadow 0.5s ease;
+}
+
+.gallery-item:hover .museum-frame {
+  transform: translateY(-4px);
+}
+
+/* 額縁の内側の細い金線 */
+.museum-frame::after {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  border: 1px solid #5a4210;
+  pointer-events: none;
+}
+
+/* 高級台紙（マット） */
+.museum-mat {
+  background-color: var(--mat-color);
+  padding: 18px 18px 22px 18px; /* 下部を広げて錯視を補正する伝統の比率 */
+  box-shadow: 
+    inset 5px 5px 15px rgba(0, 0, 0, 0.8),
+    inset -1px -1px 3px rgba(255, 255, 255, 0.05);
+}
+
+.photo-image {
+  width: 100%;
+  height: auto;
+  display: block;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(0, 0, 0, 0.6);
+  transition: opacity 0.3s ease;
+}
+
+.gallery-item:hover .photo-image {
+  opacity: 0.9;
+}
+
+/* ==========================================================================
+   5. 作品解説プレート（キャプション）
+   ========================================================================== */
+.caption-plate {
+  margin-top: 1.25rem;
+  padding-left: 1rem;
+  border-left: 2px solid #1c1917;
+  text-align: center;
+}
+
+@media (min-width: 768px) {
+  .caption-plate { text-align: left; }
+}
+
+.item-title {
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.4rem;
+  transition: color 0.3s ease;
+}
+
+.gallery-item:hover .item-title {
+  color: var(--accent-color);
+}
+
+.item-meta {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  font-size: 11px;
+  color: var(--text-sub);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 0.4rem;
+}
+
+@media (min-width: 768px) {
+  .item-meta { justify-content: space-between; }
+}
+
+.uploader {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.uploader i {
+  margin-right: 0.4rem;
+  color: rgba(212, 175, 55, 0.4);
+}
+
+.date {
+  letter-spacing: 0.05em;
+  opacity: 0.8;
+}
+
+/* 空室時 */
+.empty-gallery {
+  text-align: center;
+  padding: 6rem 0;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background-color: rgba(22, 22, 22, 0.2);
+  border-radius: 2px;
+}
+
+.empty-gallery i {
+  font-size: 2.5rem;
+  color: rgba(255, 255, 255, 0.1);
+  margin-bottom: 1rem;
+}
+
+.empty-text-main {
+  font-size: 0.875rem;
+  letter-spacing: 0.15em;
+  color: var(--text-sub);
+}
+
+.empty-text-sub {
+  font-size: 0.75rem;
+  color: rgba(138, 138, 138, 0.6);
+  margin-top: 0.5rem;
+}
+
+/* ==========================================================================
+   6. フッター
+   ========================================================================== */
+.main-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 1.5rem 0;
+  text-align: center;
+  font-size: 10px;
+  color: rgba(138, 138, 138, 0.2);
+  letter-spacing: 0.15em;
+}
+
+/* ==========================================================================
+   7. 全画面モーダル
+   ========================================================================== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(8, 8, 8, 0.98);
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  position: relative;
+  max-width: 100vw;
+  max-h: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.btn-modal-close {
+  position: absolute;
+  top: -3rem;
+  right: 0;
+  background: transparent;
+  border: none;
+  color: var(--text-sub);
+  font-size: 1.875rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  transition: color 0.2s ease;
+  z-index: 60;
+}
+
+@media (min-width: 768px) {
+  .btn-modal-close {
+    top: 0;
+    right: -4rem;
+  }
+}
+
+.btn-modal-close:hover {
+  color: #fff;
+}
+
+/* モーダル専用の額縁・台紙調整 */
+.modal-frame {
+  max-width: 95vw;
+  max-height: 75vh;
+}
+
+.modal-mat {
+  padding: 1rem;
+}
+
+@media (min-width: 640px) {
+  .modal-mat { padding: 1.5rem; }
+}
+
+.modal-image {
+  max-height: 60vh;
+  object-fit: contain;
+}
+
+/* モーダルの解説プレート */
+.modal-plate {
+  width: 100%;
+  max-width: 42rem;
+  padding: 0 1rem;
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+.modal-item-title {
+  font-size: 1.125rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  color: var(--accent-color);
+}
+
+@media (min-width: 768px) {
+  .modal-item-title { font-size: 1.25rem; }
+}
+
+.modal-item-description {
+  font-size: 0.875rem;
+  color: var(--text-sub);
+  margin-top: 0.75rem;
+  line-height: 1.6;
+  font-weight: 300;
+  max-width: 28rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.modal-item-meta {
+  display: flex;
+  gap: 1.5rem;
+  justify-content: center;
+  font-size: 0.75rem;
+  color: rgba(138, 138, 138, 0.5);
+  margin-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 1rem;
+}
