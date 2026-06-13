@@ -40,28 +40,38 @@
   top: 0;
   z-index: 40;
   backdrop-filter: blur(8px);
-  background-opacity: 0.95;
 }
 
 .header-container {
   max-width: var(--max-width);
   margin: 0 auto;
-  padding: 1rem 1.5rem;
+  padding: 1.25rem 1.5rem; /* 上下の余白をわずかに広げて窮屈さを解消 */
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
+/* ★ここをリニューアル */
 .gallery-logo {
-  font-size: 1.25rem;
-  font-weight: 500;
+  font-size: 1.35rem;        /* 少しサイズを大きく */
+  font-weight: 600;         /* 芯のある、凛とした太さに（Noto Serifの太めを適用） */
   color: var(--accent-color);
-  tracking-widest: 0.15em;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.25em;   /* 文字の間隔をさらに広げ、碑文のような厳かな佇まいに */
+  margin-left: 0.3em;     /* 文字間隔を広げた分の右側の余白バランスを調整 */
+  
+  /* ゴールドの文字が暗闇でほんのり灯っているような、繊細な奥深さを演出 */
+  text-shadow: 
+    0 0 1px rgba(212, 175, 55, 0.5),
+    0 4px 12px rgba(0, 0, 0, 0.8);
 }
 
+/* PC表示のときはさらに堂々と */
 @media (min-width: 768px) {
-  .gallery-logo { font-size: 1.5rem; }
+  .gallery-logo { 
+    font-size: 1.65rem; 
+    letter-spacing: 0.3em;
+    margin-right: 0.3em;
+  }
 }
 
 .navigation-bar {
@@ -175,26 +185,32 @@
 }
 
 /* ==========================================================================
-   4. Masonry（石積み）＆ 高級額縁
+   4. 可変行グリッド（Row-based Grid）＆ 高級額縁
    ========================================================================== */
 .gallery-columns {
-  column-count: 1;
-  column-gap: 2.5rem;
+  display: grid;
+  /* 最初はスマホ用に1列 */
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  /* 縦横のあいだの余白 */
+  gap: 3.5rem 2.5rem; 
+  /* ★ここが超重要！画像を縦に引き伸ばさず、それぞれの持ち味の長さのままにします */
+  align-items: start; 
 }
 
-@media (min-width: 640px) { .gallery-columns { column-count: 2; } }
-@media (min-width: 1024px) { .gallery-columns { column-count: 3; } }
-@media (min-width: 1280px) { .gallery-columns { column-count: 4; } }
+/* 画面幅に合わせて、2列、3列、4列と自動で増やす */
+@media (min-width: 640px) { .gallery-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1024px) { .gallery-columns { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1280px) { .gallery-columns { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 
 .gallery-item {
-  break-inside: avoid;
-  margin-bottom: 3rem;
+  /* 前のMasonry用の指定（break-inside等）はすべて削除してOKです */
   cursor: pointer;
 }
 
-/* 高級額縁（モールディング） */
+/* 高級額縁（モールディング）以下のスタイルは、変更なしでそのまま維持 */
 .museum-frame {
   position: relative;
+  /* (以下省略。既存のmuseum-frameのコードをそのまま残してください) */
   background: linear-gradient(135deg, #a37a2d 0%, #e2c575 25%, #b08a3b 50%, #f1dc99 75%, #88621b 100%);
   padding: 14px;
   box-shadow: 
@@ -317,12 +333,6 @@
   color: var(--text-sub);
 }
 
-.empty-text-sub {
-  font-size: 0.75rem;
-  color: rgba(138, 138, 138, 0.6);
-  margin-top: 0.5rem;
-}
-
 /* ==========================================================================
    6. フッター
    ========================================================================== */
@@ -443,4 +453,62 @@
   margin-top: 1rem;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
   padding-top: 1rem;
+}
+
+/* （これまでのスタイルはそのまま維持） */
+
+/* ==========================================================================
+   8. ページネーション（画面遷移ボタン）
+   ========================================================================== */
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 5rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.btn-page-number, .btn-page-arrow {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-sub);
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: inherit;
+  font-size: 0.875rem;
+  font-weight: 400;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+}
+
+.btn-page-arrow {
+  font-size: 0.75rem;
+}
+
+/* ホバー時：境界線を少し明るく、文字をゴールドに */
+.btn-page-number:hover:not(.active), .btn-page-arrow:hover:not(:disabled) {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+/* 現在のページ（アクティブ）：背景をゴールドに、文字を黒に */
+.btn-page-number.active {
+  background-color: var(--accent-color);
+  border-color: var(--accent-color);
+  color: var(--bg-color);
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.2);
+}
+
+/* 端に到達してこれ以上進めない矢印ボタン */
+.btn-page-arrow:disabled {
+  opacity: 0.15;
+  cursor: not-allowed;
+  border-color: rgba(255, 255, 255, 0.05);
 }
