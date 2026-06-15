@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ミヤビ美術館</title>
+  <title>ミヤビのための美術館</title>
   
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@200;300;400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght=200;300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
   <link rel="stylesheet" href="mainstyle.css">
@@ -21,16 +21,30 @@
         <h1 class="gallery-logo">ミヤビ美術館</h1>
         
         <div class="navigation-bar">
-          <div class="user-profile">
-            <i class="fa-solid fa-user-circle"></i>
-            <span>{{ username }} 様</span>
+          <div v-if="isLoggedIn" class="admin-controls">
+            <div class="user-profile">
+              <i :class="currentUserRole === 'admin' ? 'fa-solid fa-user-gear text-gold' : 'fa-solid fa-user-pen'"></i>
+              <span>{{ username }} 様 <small v-if="currentUserRole === 'admin'">(特権)</small></span>
+            </div>
+            
+            <button @click="goToUpload" class="btn-add-exhibit">
+              <i class="fa-solid fa-plus"></i>作品を追加
+            </button>
+
+            <button v-if="currentUserRole === 'admin'" @click="openAdminPanel" class="btn-admin-panel" title="管理パネル">
+              <i class="fa-solid fa-sliders"></i>
+            </button>
+
+            <button @click="handleLogout" class="btn-logout" title="ログアウト">
+              <i class="fa-solid fa-sign-out-alt"></i>
+            </button>
           </div>
-          <button @click="goToUpload" class="btn-add-exhibit">
-            <i class="fa-solid fa-plus"></i>作品を追加
-          </button>
-          <button @click="handleLogout" class="btn-logout" title="ログアウト">
-            <i class="fa-solid fa-sign-out-alt"></i>
-          </button>
+          
+          <div v-else class="guest-controls">
+            <button @click="goToLogin" class="btn-add-exhibit">
+              ログイン
+            </button>
+          </div>
         </div>
       </div>
     </header>
@@ -43,21 +57,85 @@
         <div class="branding-line"></div>
       </div>
 
+      <div class="filter-control-bar">
+        <div class="filter-group">
+          <button 
+            @click="filterPinnedOnly = !filterPinnedOnly; resetPage();" 
+            :class="['btn-filter-toggle', { active: filterPinnedOnly }]"
+          >
+            <i class="fa-solid fa-thumbtack"></i> 特別展示のみ
+          </button>
+
+          <div class="filter-select-wrapper">
+            <i class="fa-solid fa-feather select-icon"></i>
+            <select v-model="selectedUploader" @change="resetPage" class="filter-select">
+              <option value="">すべての出展者</option>
+              <option v-for="name in uniqueUploaders" :key="name" :value="name">{{ name }}</option>
+            </select>
+          </div>
+
+          <div class="filter-select-wrapper">
+            <i class="fa-solid fa-tags select-icon"></i>
+            <select v-model="selectedTag" @change="resetPage" class="filter-select">
+              <option value="">すべてのタグ</option>
+              <option v-for="tag in uniqueTags" :key="tag" :value="tag">#{{ tag }}</option>
+            </select>
+          </div>
+        </div>
+        
+        <button 
+          v-if="filterPinnedOnly || selectedUploader || selectedTag" 
+          @click="filterPinnedOnly = false; selectedUploader = ''; selectedTag = ''; resetPage();" 
+          class="btn-filter-reset"
+        >
+          条件をクリア
+        </button>
+      </div>
+
       <div v-if="displayedPhotos.length > 0" class="gallery-columns">
         <div 
           v-for="photo in displayedPhotos" 
           :key="photo.id" 
           class="gallery-item"
+          :class="{ 'item-pinned': photo.isPinned, 'item-hidden': photo.isHidden }"
           @click="openModal(photo)"
         >
           <div class="museum-frame">
+            <div v-if="photo.isPinned" class="pin-badge" title="特別展示作品">
+              <i class="fa-solid fa-thumbtack"></i>
+            </div>
             <div class="museum-mat">
               <img :src="photo.cloudinaryUrl" :alt="photo.title" class="photo-image" loading="lazy">
+              
+              <div v-if="isLoggedIn" class="item-action-overlay" @click.stop>
+                <button v-if="currentUserRole === 'admin' || photo.uploaderId === currentUserId" @click="editPhoto(photo)" class="action-icon-btn" title="作品を編集">
+                  <i class="fa-solid fa-pen"></i>
+                </button>
+                <button v-if="currentUserRole === 'admin' || photo.uploaderId === currentUserId" @click="deletePhoto(photo)" class="action-icon-btn btn-danger" title="展示を取り下げる">
+                  <i class="fa-solid fa-trash"></i>
+                </button>
+                
+                <button v-if="currentUserRole === 'admin'" @click="togglePin(photo)" :class="['action-icon-btn', { active: photo.isPinned }]" title="特別展示の切り替え">
+                  <i class="fa-solid fa-thumbtack"></i>
+                </button>
+                <button v-if="currentUserRole === 'admin'" @click="toggleHide(photo)" :class="['action-icon-btn', { active: photo.isHidden }]" title="バックヤード（非表示）へ送る">
+                  <i class="fa-solid" :class="photo.isHidden ? 'fa-eye-slash' : 'fa-eye'"></i>
+                </button>
+              </div>
+
             </div>
           </div>
           
           <div class="caption-plate">
-            <h3 class="item-title">{{ photo.title || '無題' }}</h3>
+            <h3 class="item-title">
+              {{ photo.title || '無題' }}
+              <span v-if="photo.isHidden" class="badge-hidden-text">(バックヤード保管中)</span>
+            </h3>
+            
+            <div v-if="photo.tags && photo.tags.length > 0" class="item-tags">
+              <span v-for="tag in photo.tags" :key="tag" class="tag-item">#{{ tag }}</span>
+            </div>
+
             <div class="item-meta">
               <span class="uploader">
                 <i class="fa-solid fa-feather"></i>{{ photo.uploader }}
@@ -70,7 +148,7 @@
 
       <div v-else class="empty-gallery">
         <i class="fa-solid fa-mountain-sun"></i>
-        <p class="empty-text-main">まだ展示作品がありません。</p>
+        <p class="empty-text-main">条件に一致する展示作品がありません。</p>
       </div>
 
       <div v-if="totalPages > 1" class="pagination-container">
@@ -110,13 +188,86 @@
         </div>
         <div class="modal-plate">
           <h3 class="modal-item-title">{{ selectedPhoto.title || '無題' }}</h3>
+          
           <p v-if="selectedPhoto.description" class="modal-item-description">{{ selectedPhoto.description }}</p>
+          
+          <div v-if="selectedPhoto.tags && selectedPhoto.tags.length > 0" class="modal-item-tags">
+            <span v-for="tag in selectedPhoto.tags" :key="tag" class="modal-tag-item">#{{ tag }}</span>
+          </div>
+
           <div class="modal-item-meta">
-            <span>撮影者: {{ selectedPhoto.uploader }}</span>
+            <span>投稿者: {{ selectedPhoto.uploader }}</span>
             <span>展示日: {{ formatDate(selectedPhoto.createdAt) }}</span>
           </div>
         </div>
       </div>
+    </div>
+
+    <div v-if="showAdminPanel" class="modal-overlay" @click="closeAdminPanel">
+      <div class="modal-content admin-panel-content" @click.stop>
+        <button @click="closeAdminPanel" class="btn-modal-close">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+        
+        <h3 class="admin-panel-title"><i class="fa-solid fa-sliders"></i> 管理帳簿</h3>
+        <p class="admin-panel-subtitle">出展者の管理を行います。</p>
+
+        <div class="admin-table-container">
+          <table class="admin-user-table">
+            <thead>
+              <tr>
+                <th>出展者名</th>
+                <th>メールアドレス</th>
+                <th>現在の職能</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="user in usersList" :key="user.uid" :class="{ 'user-banned': user.status === 'banned' }">
+                <td>
+                  <span class="user-table-name">{{ user.username }}</span>
+                  <span v-if="user.status === 'banned'" class="badge-banned">BAN済</span>
+                </td>
+                <td>{{ user.email }}</td>
+                <td>
+                  <span class="role-user-tag">一般</span>
+                </td>
+                <td>
+                  <div class="table-action-group">
+                    <button 
+                      @click="openBanConfirm(user)" 
+                      :class="['btn-table-action', user.status === 'banned' ? 'btn-unban' : 'btn-ban']"
+                    >
+                      {{ user.status === 'banned' ? '追放(BAN)解除' : '追放(BAN)' }}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    
+    <div v-if="banConfirmModal.show" class="modal-overlay alert-overlay" @click="closeBanConfirm">
+      <div class="modal-content ban-confirm-content" @click.stop>
+        <div class="alert-icon-wrap">
+          <i class="fa-solid fa-gavel"></i>
+        </div>
+        <h3 class="ban-confirm-title">出展者の追放</h3>
+        <p class="ban-confirm-message">
+          本当に <strong>{{ banConfirmModal.user?.username }}</strong> を追放しますか？<br>
+          追放された者は、以降のログインおよび作品の追加展示ができなくなります。
+        </p>
+        <div class="ban-confirm-actions">
+          <button @click="closeBanConfirm" class="btn-alert-cancel">戻る</button>
+          <button @click="executeBanUser" class="btn-alert-confirm">追放を確定する</button>
+        </div>
+      </div>
+    </div>
+    
+    <div :class="['museum-toast', { show: toast.show }]">
+      <i class="fa-solid fa-circle-info"></i> {{ toast.message }}
     </div>
     
   </div>
@@ -125,41 +276,3 @@
   <script src="main.js"></script>
 </body>
 </html>
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  position: sticky;
-  top: 0;
-  z-index: 40;
-  backdrop-filter: blur(8px);
-}
-
-.header-container {
-  max-width: var(--max-width);
-  margin: 0 auto;
-  padding: 1.25rem 1.5rem; /* 上下の余白をわずかに広げて窮屈さを解消 */
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-/* ★ここをリニューアル */
-.gallery-logo {
-  font-size: 1.35rem;        /* 少しサイズを大きく */
-  font-weight: 600;         /* 芯のある、凛とした太さに（Noto Serifの太めを適用） */
-  color: var(--accent-color);
-  letter-spacing: 0.25em;   /* 文字の間隔をさらに広げ、碑文のような厳かな佇まいに */
-  margin-right: 0.25em;     /* 文字間隔を広げた分の右側の余白バランスを調整 */
-  
-  /* ゴールドの文字が暗闇でほんのり灯っているような、繊細な奥深さを演出 */
-  text-shadow: 
-    0 0 1px rgba(212, 175, 55, 0.5),
-    0 4px 12px rgba(0, 0, 0, 0.8);
-}
-
-/* PC表示のときはさらに堂々と */
-@media (min-width: 768px) {
-  .gallery-logo { 
-    font-size: 1.65rem; 
-    letter-spacing: 0.3em;
-    margin-right: 0.3em;
-  }
-}

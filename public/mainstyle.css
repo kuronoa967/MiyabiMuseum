@@ -21,7 +21,7 @@
   color: var(--text-main);
   font-family: 'Noto Serif JP', serif;
   font-weight: 300;
-  min-height: 100-screen;
+  min-height: 100vh; /* ★ 100-screen から 100vh に修正 */
   display: flex;
   flex-direction: column;
 }
@@ -45,27 +45,23 @@
 .header-container {
   max-width: var(--max-width);
   margin: 0 auto;
-  padding: 1.25rem 1.5rem; /* 上下の余白をわずかに広げて窮屈さを解消 */
+  padding: 1.25rem 1.5rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 
-/* ★ここをリニューアル */
 .gallery-logo {
-  font-size: 1.35rem;        /* 少しサイズを大きく */
-  font-weight: 600;         /* 芯のある、凛とした太さに（Noto Serifの太めを適用） */
+  font-size: 1.35rem;
+  font-weight: 600;
   color: var(--accent-color);
-  letter-spacing: 0.25em;   /* 文字の間隔をさらに広げ、碑文のような厳かな佇まいに */
-  margin-left: 0.3em;     /* 文字間隔を広げた分の右側の余白バランスを調整 */
-  
-  /* ゴールドの文字が暗闇でほんのり灯っているような、繊細な奥深さを演出 */
+  letter-spacing: 0.25em;
+  margin-left: 0.3em;
   text-shadow: 
     0 0 1px rgba(212, 175, 55, 0.5),
     0 4px 12px rgba(0, 0, 0, 0.8);
 }
 
-/* PC表示のときはさらに堂々と */
 @media (min-width: 768px) {
   .gallery-logo { 
     font-size: 1.65rem; 
@@ -80,11 +76,24 @@
   gap: 1rem;
 }
 
+/* ログイン時のボタンやプロファイルを包む要素 */
+.admin-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+/* 未ログイン時のボタンを包む要素 */
+.guest-controls {
+  display: flex;
+  align-items: center;
+}
+
 .user-profile {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  border-r: 1px solid rgba(255, 255, 255, 0.1);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
   padding-right: 1rem;
   font-size: 0.75rem;
   color: var(--text-sub);
@@ -156,13 +165,14 @@
 
 .wall-branding {
   text-align: center;
-  margin-bottom: 4rem;
+  margin-bottom: 3rem;
 }
 
 .section-subtitle {
   font-size: 0.75rem;
   letter-spacing: 0.3em;
   margin-bottom: 0.75rem;
+  color: var(--text-sub);
 }
 
 .section-title {
@@ -185,32 +195,153 @@
 }
 
 /* ==========================================================================
+   3.5. 新設：絞り込み制御帯（Filter Control Bar）のデザイン
+   ========================================================================== */
+.filter-control-bar {
+  max-width: var(--max-width);
+  margin: 0 auto 3.5rem;
+  padding: 1rem 1.5rem;
+  background-color: rgba(22, 22, 22, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  border-radius: 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@media (min-width: 768px) {
+  .filter-control-bar {
+    flex-direction: row;
+    padding: 0.75rem 1.5rem;
+  }
+}
+
+.filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-filter-toggle {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-sub);
+  padding: 0.5rem 1.25rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+  border-radius: 2px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  letter-spacing: 0.05em;
+  transition: all 0.3s ease;
+}
+
+.btn-filter-toggle:hover {
+  border-color: rgba(212, 175, 55, 0.4);
+  color: var(--accent-color);
+}
+
+.btn-filter-toggle.active {
+  background-color: rgba(212, 175, 55, 0.08);
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+  box-shadow: inset 0 0 10px rgba(212, 175, 55, 0.1);
+}
+
+.filter-select-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.select-icon {
+  position: absolute;
+  left: 0.85rem;
+  font-size: 0.75rem;
+  color: rgba(212, 175, 55, 0.5);
+  pointer-events: none;
+}
+
+.filter-select {
+  background-color: rgba(8, 8, 8, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-main);
+  padding: 0.5rem 2.25rem 0.5rem 2rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+  border-radius: 2px;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  min-width: 150px;
+  letter-spacing: 0.05em;
+  transition: all 0.3s ease;
+}
+
+/* カスタム矢印の代わりとなる小さな下向き三角形を付与 */
+.filter-select-wrapper::after {
+  content: '';
+  position: absolute;
+  right: 0.85rem;
+  width: 0;
+  height: 0;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4px solid rgba(212, 175, 55, 0.5);
+  pointer-events: none;
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.05);
+}
+
+.btn-filter-reset {
+  background: transparent;
+  border: none;
+  color: #da6b6b;
+  font-size: 0.75rem;
+  font-family: inherit;
+  cursor: pointer;
+  letter-spacing: 0.05em;
+  transition: color 0.2s ease;
+  padding: 0.25rem 0.5rem;
+  opacity: 0.8;
+}
+
+.btn-filter-reset:hover {
+  color: #ff8f8f;
+  opacity: 1;
+}
+
+/* ==========================================================================
    4. 可変行グリッド（Row-based Grid）＆ 高級額縁
    ========================================================================== */
 .gallery-columns {
   display: grid;
-  /* 最初はスマホ用に1列 */
   grid-template-columns: repeat(1, minmax(0, 1fr));
-  /* 縦横のあいだの余白 */
   gap: 3.5rem 2.5rem; 
-  /* ★ここが超重要！画像を縦に引き伸ばさず、それぞれの持ち味の長さのままにします */
   align-items: start; 
 }
 
-/* 画面幅に合わせて、2列、3列、4列と自動で増やす */
 @media (min-width: 640px) { .gallery-columns { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (min-width: 1024px) { .gallery-columns { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (min-width: 1280px) { .gallery-columns { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 
 .gallery-item {
-  /* 前のMasonry用の指定（break-inside等）はすべて削除してOKです */
   cursor: pointer;
 }
 
-/* 高級額縁（モールディング）以下のスタイルは、変更なしでそのまま維持 */
 .museum-frame {
   position: relative;
-  /* (以下省略。既存のmuseum-frameのコードをそのまま残してください) */
   background: linear-gradient(135deg, #a37a2d 0%, #e2c575 25%, #b08a3b 50%, #f1dc99 75%, #88621b 100%);
   padding: 14px;
   box-shadow: 
@@ -235,8 +366,9 @@
 
 /* 高級台紙（マット） */
 .museum-mat {
+  position: relative; /* ★ overlayの絶対配置基準として追加 */
   background-color: var(--mat-color);
-  padding: 18px 18px 22px 18px; /* 下部を広げて錯視を補正する伝統の比率 */
+  padding: 18px 18px 22px 18px; 
   box-shadow: 
     inset 5px 5px 15px rgba(0, 0, 0, 0.8),
     inset -1px -1px 3px rgba(255, 255, 255, 0.05);
@@ -363,7 +495,7 @@
 .modal-content {
   position: relative;
   max-width: 100vw;
-  max-h: 100vh;
+  max-height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -433,17 +565,6 @@
   .modal-item-title { font-size: 1.25rem; }
 }
 
-.modal-item-description {
-  font-size: 0.875rem;
-  color: var(--text-sub);
-  margin-top: 0.75rem;
-  line-height: 1.6;
-  font-weight: 300;
-  max-width: 28rem;
-  margin-left: auto;
-  margin-right: auto;
-}
-
 .modal-item-meta {
   display: flex;
   gap: 1.5rem;
@@ -454,8 +575,6 @@
   border-top: 1px solid rgba(255, 255, 255, 0.05);
   padding-top: 1rem;
 }
-
-/* （これまでのスタイルはそのまま維持） */
 
 /* ==========================================================================
    8. ページネーション（画面遷移ボタン）
@@ -511,4 +630,919 @@
   opacity: 0.15;
   cursor: not-allowed;
   border-color: rgba(255, 255, 255, 0.05);
+}
+
+/* ==========================================================================
+   9. ログイン（エントランス）専用デザイン
+   ========================================================================== */
+.login-page-body {
+  justify-content: center;
+  align-items: center;
+  padding: 2rem 1rem;
+}
+
+.login-container {
+  width: 100%;
+  max-width: 400px;
+  animation: fadeIn 1.2s ease forwards;
+}
+
+.login-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.login-logo {
+  font-size: 1.75rem !important;
+  display: inline-block;
+}
+
+.login-card {
+  background-color: var(--mat-color);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  padding: 2.5rem 2rem;
+  box-shadow: 0 40px 100px -20px rgba(0, 0, 0, 0.9);
+  position: relative;
+}
+
+.login-card::after {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  border: 1px solid rgba(212, 175, 55, 0.05);
+  pointer-events: none;
+}
+
+.form-group {
+  margin-bottom: 1.75rem;
+}
+
+.form-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-sub);
+  letter-spacing: 0.1em;
+  margin-bottom: 0.6rem;
+}
+
+.form-label i {
+  color: rgba(212, 175, 55, 0.4);
+  margin-right: 0.25rem;
+}
+
+.form-input {
+  width: 100%;
+  background-color: rgba(8, 8, 8, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  padding: 0.75rem 1rem;
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 0.9rem;
+  transition: all 0.4s ease;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  background-color: rgba(8, 8, 8, 0.9);
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.05);
+}
+
+.login-error-message {
+  font-size: 0.75rem;
+  color: #da6b6b;
+  margin-top: -0.5rem;
+  margin-bottom: 1.5rem;
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.login-action-group {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2.5rem;
+}
+
+.btn-login-submit {
+  flex: 2;
+  background: var(--accent-color);
+  border: 1px solid var(--accent-color);
+  color: #111;
+  padding: 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 2px;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.btn-login-submit:hover:not(:disabled) {
+  background: #e5c158;
+  border-color: #e5c158;
+  transform: translateY(-1px);
+}
+
+.btn-login-submit:disabled {
+  background: rgba(212, 175, 55, 0.2);
+  border-color: transparent;
+  color: rgba(255, 255, 255, 0.2);
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   10. 美術館専用 通知プレート（トースト）
+   ========================================================================== */
+.museum-toast {
+  position: fixed;
+  top: 5.5rem; 
+  left: 50%;
+  transform: translateX(-50%) translateY(-20px); 
+  background-color: rgba(15, 15, 15, 0.9);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  color: var(--accent-color);
+  padding: 0.75rem 2rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.15em;
+  border-radius: 2px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  z-index: 100;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+/* 通知が表示されたときの状態 */
+.museum-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0); 
+}
+
+.museum-toast i {
+  margin-right: 0.5rem;
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+/* ==========================================================================
+   11. 権限コントロール ＆ ホバーツールバー
+   ========================================================================== */
+.text-gold {
+  color: #d4af37 !important;
+}
+
+/* 特別展示（ピン留め）のアイテムの枠線をゴールドに */
+.gallery-item.item-pinned .museum-frame {
+  border: 1px solid rgba(212, 175, 55, 0.6);
+  box-shadow: 0 10px 30px rgba(212, 175, 55, 0.15);
+}
+
+/* ピンバッジの絶対配置 */
+.pin-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background-color: rgba(15, 15, 15, 0.85);
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  color: #d4af37;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  z-index: 5;
+}
+
+/* バックヤード（非表示）状態のアイテムを薄暗く */
+/* 通常時はカード全体（額縁・画像・プレート）を丸ごと薄暗くする */
+.gallery-item.item-hidden {
+  opacity: 0.35;
+  transition: opacity 0.3s ease;
+}
+
+/* ★マウスホバーした時だけ、カード全体を100%の明るさに復元する */
+/* これにより、ホバー中は額縁も画像も、そしてボタンもすべてクリアに表示されます */
+.gallery-item.item-hidden:hover {
+  opacity: 1;
+}
+
+.badge-hidden-text {
+  font-size: 0.75rem;
+  color: #e74c3c;
+  font-weight: normal;
+  margin-left: 0.5rem;
+}
+
+/* 写真ホバー時に重なる黒い帯（ツールバー） */
+.item-action-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0) 100%);
+  padding: 1.5rem 0.75rem 0.75rem;
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  opacity: 0; 
+  transition: opacity 0.3s ease;
+  z-index: 10;
+}
+
+.museum-mat:hover .item-action-overlay {
+  opacity: 1; 
+}
+
+/* ツールバー内の極小丸ボタン */
+.action-icon-btn {
+  background: rgba(20, 20, 20, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--text-sub);
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  transition: all 0.2s ease;
+}
+
+.action-icon-btn:hover {
+  color: #fff;
+  border-color: #fff;
+  transform: translateY(-2px);
+}
+
+.action-icon-btn.btn-danger:hover {
+  background: #c0392b;
+  border-color: #e74c3c;
+  color: #fff;
+}
+
+/* ピン留めや非表示が「現在アクティブ」な時の色 */
+.action-icon-btn.active {
+  color: #d4af37;
+  border-color: #d4af37;
+  background: rgba(212, 175, 55, 0.1);
+}
+
+/* ==========================================================================
+   12. 特権ヘッダーボタン ＆ 管理パネル（モーダル）
+   ========================================================================== */
+.btn-admin-panel {
+  background: transparent;
+  border: none;
+  color: var(--text-sub);
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: color 0.2s ease;
+  padding: 0 0.25rem;
+}
+
+.btn-admin-panel:hover {
+  color: #d4af37;
+}
+
+/* 管理パネルモーダルの横幅拡張 */
+.admin-panel-content {
+  max-width: 800px !important;
+  padding: 2.5rem !important;
+}
+
+.admin-panel-title {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 1.4rem;
+  color: var(--accent-color);
+  letter-spacing: 0.1em;
+  margin-bottom: 0.25rem;
+}
+
+.admin-panel-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-sub);
+  margin-bottom: 2rem;
+}
+
+/* 管理帳簿テーブルの和モダンデザイン */
+.admin-table-container {
+  overflow-x: auto;
+}
+
+.admin-user-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.85rem;
+}
+
+.admin-user-table th {
+  border-bottom: 1px solid rgba(212, 175, 55, 0.3);
+  padding: 0.75rem 1rem;
+  color: var(--text-sub);
+  font-weight: 500;
+  letter-spacing: 0.05em;
+}
+
+.admin-user-table td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 1rem;
+  vertical-align: middle;
+}
+
+/* BANされたユーザーの行を暗く */
+.admin-user-table tr.user-banned td {
+  color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.user-table-name {
+  font-weight: 500;
+}
+
+/* 各種バッジ */
+.badge-banned {
+  background-color: #c0392b;
+  color: #fff;
+  font-size: 0.65rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 2px;
+  margin-left: 0.5rem;
+}
+
+.role-admin-tag {
+  color: #d4af37;
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  padding: 0.2rem 0.5rem;
+  font-size: 0.75rem;
+  border-radius: 2px;
+  background: rgba(212, 175, 55, 0.05);
+}
+
+.role-user-tag {
+  color: var(--text-sub);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.2rem 0.5rem;
+  font-size: 0.75rem;
+  border-radius: 2px;
+}
+
+/* テーブル内の操作ボタン群 */
+.table-action-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-table-action {
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.75rem;
+  font-family: inherit;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-promote {
+  border-color: rgba(212, 175, 55, 0.4);
+  color: var(--accent-color);
+}
+.btn-promote:hover:not(:disabled) {
+  background: #d4af37;
+  color: #111;
+}
+
+.btn-ban {
+  border-color: rgba(231, 76, 60, 0.4);
+  color: #e74c3c;
+}
+.btn-ban:hover {
+  background: #e74c3c;
+  color: #fff;
+}
+
+.btn-unban {
+  border-color: rgba(46, 204, 113, 0.4);
+  color: #2ecc71;
+}
+.btn-unban:hover {
+  background: #2ecc71;
+  color: #fff;
+}
+
+.btn-table-action:disabled {
+  opacity: 0.2;
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   13. 美術館仕様・カスタム警告ダイアログ（BAN確認）
+   ========================================================================== */
+.alert-overlay {
+  background-color: rgba(10, 5, 5, 0.85) !important;
+  backdrop-filter: blur(12px) !important;
+}
+
+.ban-confirm-content {
+  max-width: 450px !important;
+  text-align: center;
+  padding: 3rem 2rem 2.5rem !important;
+  border: 1px solid rgba(231, 76, 60, 0.3) !important; 
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8) !important;
+}
+
+.alert-icon-wrap {
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 1.5rem;
+  border-radius: 50%;
+  background: rgba(231, 76, 60, 0.1);
+  border: 1px solid rgba(231, 76, 60, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #e74c3c;
+  font-size: 1.5rem;
+}
+
+.ban-confirm-title {
+  font-family: 'Noto Serif JP', serif;
+  font-size: 1.25rem;
+  color: var(--accent-color);
+  letter-spacing: 0.1em;
+  margin-bottom: 1rem;
+}
+
+.ban-confirm-message {
+  font-size: 0.85rem;
+  color: var(--text-sub);
+  line-height: 1.7;
+  margin-bottom: 2.5rem;
+}
+
+.ban-confirm-message strong {
+  color: #fff;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.5);
+  padding-bottom: 2px;
+}
+
+.ban-confirm-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.btn-alert-cancel {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-sub);
+  padding: 0.6rem 2rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.2s ease;
+}
+
+.btn-alert-cancel:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+  color: #fff;
+}
+
+.btn-alert-confirm {
+  background: #c0392b;
+  border: 1px solid #e74c3c;
+  color: #fff;
+  padding: 0.6rem 2rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  border-radius: 2px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 15px rgba(192, 57, 43, 0.3);
+}
+
+.btn-alert-confirm:hover {
+  background: #e74c3c;
+  box-shadow: 0 4px 20px rgba(231, 76, 60, 0.5);
+  transform: translateY(-1px);
+}
+
+/* ==========================================================================
+   14. タグ ＆ 作品解説（説明文）の装飾スタイル
+   ========================================================================== */
+.item-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.5rem 0 0.75rem;
+}
+
+.tag-item {
+  font-size: 0.7rem;
+  color: #c5a880; 
+  background: rgba(212, 175, 55, 0.04);
+  padding: 0.15rem 0.45rem;
+  border-radius: 2px;
+  border: 1px solid rgba(212, 175, 55, 0.1);
+  letter-spacing: 0.05em;
+  font-family: 'Noto Serif JP', serif;
+}
+
+.modal-item-description {
+  font-size: 0.85rem;
+  color: var(--text-sub);
+  line-height: 1.8;
+  margin: 1.5rem 0 1.2rem;
+  white-space: pre-wrap; 
+  font-weight: 300;
+  letter-spacing: 0.04em;
+  border-left: 1px solid rgba(212, 175, 55, 0.3); 
+  padding-left: 1rem;
+}
+
+.modal-item-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.8rem;
+}
+
+.modal-tag-item {
+  font-size: 0.75rem;
+  color: #d4af37;
+  border: 1px solid rgba(212, 175, 55, 0.25);
+  padding: 0.2rem 0.6rem;
+  border-radius: 2px;
+  background: rgba(212, 175, 55, 0.02);
+  letter-spacing: 0.05em;
+  font-family: 'Noto Serif JP', serif;
+}
+
+/* ==========================================================================
+   15. モーダル表示時のスクロール挙動の最適化
+   ========================================================================== */
+.modal-overlay {
+  align-items: flex-start !important;
+  overflow-y: auto !important;
+  padding: 4rem 1rem !important;
+}
+
+.modal-content {
+  margin: 0 auto 2rem;
+  position: relative;
+}
+
+/* ==========================================================================
+   12. 館内追放通知ダイアログ（ログイン画面専用）
+   ========================================================================== */
+/* 警告タイトルの赤文字化 */
+.ban-notice-title {
+  color: #da6b6b;
+}
+
+/* 通知本文の微調整（読みやすい左寄せと行間） */
+.ban-notice-message {
+  margin: 1.5rem 0;
+  line-height: 1.8;
+  font-size: 0.9rem;
+  text-align: left;
+}
+
+/* ボタン配置エリアのマージン */
+.ban-notice-actions {
+  margin-top: 2rem;
+}
+
+/* 門前を立ち去るボタン（専用の横幅100%・赤枠線デザイン） */
+.btn-ban-dismiss {
+  width: 100%;
+  border-color: #da6b6b;
+  color: #da6b6b;
+  background: transparent;
+  transition: all 0.2s ease;
+}
+
+/* ボタンホバー時の美術館らしい静かなエフェクト */
+.btn-ban-dismiss:hover {
+  background: rgba(218, 107, 107, 0.08);
+  color: #fff;
+  border-color: #fff;
+  transform: translateY(-1px);
+}
+
+/* ==========================================================================
+   13. 作品出展画面（アップロード専用）
+   ========================================================================== */
+
+/* --- 画面全体のレイアウト --- */
+.upload-page-body {
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+
+.upload-container {
+  width: 100%;
+  max-width: 32rem;
+  margin: auto;
+}
+
+.upload-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.upload-logo {
+  font-size: 1.8rem;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+}
+
+.upload-card {
+  background-color: rgba(22, 22, 22, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 2.5rem;
+  border-radius: 4px;
+  backdrop-filter: blur(10px);
+}
+
+/* --- 共通フォーム要素（視認性向上） --- */
+.form-label {
+  color: var(--text-main) !important; /* 読みやすい明るいメイン文字色を強制適用 */
+  font-weight: 400;                   /* 文字の線を少し太くして輪郭をはっきりと */
+  font-size: 0.95rem;
+  margin-bottom: 0.6rem;
+  display: inline-block;
+  letter-spacing: 0.05em;
+}
+
+.form-textarea {
+  resize: vertical;
+  line-height: 1.6;
+}
+
+/* --- ファイル選択・ドラッグエリア --- */
+.drop-zone {
+  border: 1px dashed rgba(212, 175, 55, 0.3);
+  background: rgba(8, 8, 8, 0.4);
+  border-radius: 2px;
+  padding: 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.drop-zone:hover {
+  border-color: var(--accent-color);
+  background: rgba(212, 175, 55, 0.02);
+}
+
+.hidden-file-input {
+  display: none;
+}
+
+.drop-zone-prompt {
+  color: var(--text-sub);
+}
+
+.drop-icon {
+  font-size: 2.5rem;
+  color: rgba(212, 175, 55, 0.4);
+  margin-bottom: 1rem;
+}
+
+.drop-text-main {
+  font-size: 0.9rem;
+  color: var(--text-main);
+  margin-bottom: 0.4rem;
+}
+
+.drop-text-sub {
+  font-size: 0.75rem;
+  color: var(--text-sub);
+}
+
+/* --- 額縁風プレビュー表示 --- */
+.drop-zone.has-image {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 1rem;
+  background: var(--mat-color);
+}
+
+.preview-frame {
+  width: 100%;
+  position: relative;
+}
+
+.preview-mat {
+  background: #000;
+  padding: 0.75rem;
+  border: 1px solid rgba(0, 0, 0, 0.5);
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.upload-preview-image {
+  max-width: 100%;
+  max-height: 300px;
+  object-fit: contain;
+  display: block;
+}
+
+.preview-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  backdrop-filter: blur(2px);
+}
+
+.preview-frame:hover .preview-overlay {
+  opacity: 1;
+}
+
+/* --- 既存タグ選択UI --- */
+.existing-tags-selector {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  padding: 1rem;
+  border-radius: 2px;
+  margin-bottom: 0.8rem;
+}
+
+.tag-selector-help {
+  font-size: 0.75rem;
+  color: var(--text-sub);
+  margin-bottom: 0.7rem;
+  letter-spacing: 0.02em;
+}
+
+.tag-badges-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.tag-select-badge {
+  font-size: 0.75rem;
+  color: var(--text-sub);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.3rem 0.65rem;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.tag-select-badge:hover {
+  border-color: rgba(212, 175, 55, 0.4);
+  color: var(--text-main);
+  background: rgba(212, 175, 55, 0.02);
+}
+
+.tag-select-badge.is-active {
+  color: #111;
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+  font-weight: 500;
+  box-shadow: 0 2px 8px rgba(212, 175, 55, 0.2);
+}
+
+.tag-select-badge.is-active i {
+  margin-right: 2px;
+}
+
+/* --- ボタンの横並びレイアウト --- */
+.upload-action-group {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2.5rem;
+}
+
+.btn-upload-submit {
+  flex: 2;
+  background: var(--accent-color);
+  border: 1px solid var(--accent-color);
+  color: #111;
+  padding: 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 2px;
+  font-family: inherit;
+  transition: all 0.2s ease;
+}
+
+.btn-upload-submit:hover:not(:disabled) {
+  background: #e5c158;
+  border-color: #e5c158;
+  transform: translateY(-1px);
+}
+
+.btn-upload-submit:disabled {
+  background: rgba(212, 175, 55, 0.2);
+  border-color: transparent;
+  color: rgba(255, 255, 255, 0.2);
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   15. 認証画面共通・画面切り替えリンク（視認性向上版）
+   ========================================================================== */
+.auth-switch-link {
+  text-align: center;
+  margin-top: 1.8rem;
+  font-size: 0.85rem;
+  color: var(--text-main);
+  letter-spacing: 0.03em;
+  position: relative;
+  z-index: 10;
+}
+
+.auth-switch-link a {
+  color: var(--accent-color);
+  text-decoration: none;
+  margin: 0 0.2rem;
+  /* 線の太さを 500 にして、ゴールドの文字がボヤけずくっきり見えるように */
+  font-weight: 500; 
+  border-bottom: 1px dashed rgba(212, 175, 55, 0.4);
+  transition: all 0.2s ease;
+}
+
+/* リンクの上にマウスを乗せたときの高輝度エフェクト */
+.auth-switch-link a:hover {
+  color: #f3d46d; /* より明るく輝くゴールドへ */
+  border-bottom-color: #f3d46d;
+  text-shadow: 0 0 8px rgba(243, 212, 109, 0.3); /* ほんのり灯るような光彩 */
+}
+
+/* ==========================================================================
+   16. 画面共通キャンセルボタン
+   ========================================================================== */
+.btn-cancel {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.02); /* ほんの少しだけ座布団を敷いて押しやすく */
+  
+  /* ★変更：枠線を「うっすら」から「はっきりとした上品な白」へ引き上げ */
+  border: 1px solid rgba(255, 255, 255, 0.25); 
+  
+  /* ★変更：文字色をくっきり読めるメインの文字色（var(--text-main)）に変更 */
+  color: var(--text-main);
+  font-weight: 400;
+  
+  height: 44px; 
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+  cursor: pointer;
+  border-radius: 2px;
+  font-family: inherit;
+  transition: all 0.25s ease;
+}
+
+/* ★変更：マウスを乗せたときの「光が灯る」エフェクト */
+.btn-cancel:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.7); /* 枠線がパッと明るく */
+  color: #fff; /* 文字が純白に */
+  background: rgba(255, 255, 255, 0.08); /* 背景がほのかに発光 */
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.1); /* 柔らかな光の余韻 */
+}
+
+.btn-cancel:disabled {
+  color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.05);
+  background: transparent;
+  cursor: not-allowed;
 }

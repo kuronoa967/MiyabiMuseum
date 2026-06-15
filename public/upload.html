@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>作品の出展 - ミヤビ美術館</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght=200;300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <link rel="stylesheet" href="mainstyle.css">
+</head>
+<body class="gallery-body upload-page-body">
+
+  <div id="app" v-cloak>
+    <div class="upload-container">
+      
+      <div class="upload-header">
+        <h1 class="gallery-logo upload-logo">作品の投稿</h1>
+        <div class="branding-line"></div>
+      </div>
+
+      <form @submit.prevent="submitUpload" class="upload-card">
+        
+        <div class="form-group">
+          <label class="form-label">
+            <i class="fa-solid fa-image"></i> 投稿画像
+          </label>
+          
+          <div 
+            class="drop-zone" 
+            :class="{ 'has-image': imagePreview }"
+            @click="triggerFileInput"
+            @dragover.prevent
+            @drop.prevent="handleDrop"
+          >
+            <input 
+              type="file" 
+              ref="fileInput" 
+              @change="handleFileSelect" 
+              accept="image/*" 
+              class="hidden-file-input"
+              required
+            >
+            
+            <div v-if="!imagePreview" class="drop-zone-prompt">
+              <i class="fa-solid fa-cloud-arrow-up drop-icon"></i>
+              <p class="drop-text-main">ここに画像をドロップ、またはクリックして選択</p>
+              <p class="drop-text-sub">対応形式: PNG, JPEG, WEBPなど</p>
+            </div>
+            
+            <div v-else class="preview-frame">
+              <div class="preview-mat">
+                <img :src="imagePreview" class="upload-preview-image" alt="出展作品プレビュー">
+              </div>
+              <div class="preview-overlay">
+                <span><i class="fa-solid fa-rotate"></i> 画像を変更する</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="title" class="form-label">
+            <i class="fa-solid fa-heading"></i> 作品の題名
+          </label>
+          <input 
+            type="text" 
+            id="title" 
+            v-model="title" 
+            class="form-input" 
+            placeholder="無題"
+            maxlength="40"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="description" class="form-label">
+            <i class="fa-solid fa-feather-pointed"></i> 作品の解説（任意）
+          </label>
+          <textarea 
+            id="description" 
+            v-model="description" 
+            class="form-input form-textarea" 
+            placeholder="この作品に込められた物語や、撮影時の情景などを記述してください"
+            rows="4"
+          ></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="tags" class="form-label">
+            <i class="fa-solid fa-tags"></i> タグ
+          </label>
+          
+          <div class="existing-tags-selector">
+            <p class="tag-selector-help">これまでのタグから選択（クリックで選択 / 解除）</p>
+            <div class="tag-badges-list">
+              <span 
+                v-for="tag in existingTags" 
+                :key="tag"
+                class="tag-select-badge"
+                :class="{ 'is-active': selectedTags.includes(tag) }"
+                @click="toggleTag(tag)"
+              >
+                <i :class="selectedTags.includes(tag) ? 'fa-solid fa-check' : 'fa-solid fa-plus'"></i> {{ tag }}
+              </span>
+            </div>
+          </div>
+
+          <input 
+            type="text" 
+            id="tags" 
+            v-model="tagsInput" 
+            class="form-input" 
+            placeholder="新しいタグを書き足す場合は、カンマやスペースで区切って入力"
+          >
+        </div>
+
+        <div class="upload-action-group">
+          <button type="button" @click="goBack" class="btn-cancel" :disabled="isLoading">
+            戻る
+          </button>
+          
+          <button type="submit" class="btn-upload-submit" :disabled="isLoading || !selectedFile">
+            <span v-if="isLoading"><i class="fa-solid fa-spinner fa-spin mr-2"></i>展示準備中...</span>
+            <span v-else>投稿する<i class="fa-solid fa-paintbrush ml-1"></i></span>
+          </button>
+        </div>
+        
+      </form>
+
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="upload.js"></script>
+</body>
+</html>

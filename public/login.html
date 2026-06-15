@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ミヤビ美術館</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght=200;300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <link rel="stylesheet" href="mainstyle.css">
+</head>
+<body class="gallery-body login-page-body">
+
+  <div id="app" v-cloak>
+    <div class="login-container">
+      
+      <div class="login-header">
+        <h1 class="gallery-logo login-logo">ミヤビ美術館</h1>
+        <div class="branding-line"></div>
+      </div>
+
+      <form @submit.prevent="submitLogin" class="login-card">
+        
+        <div class="form-group">
+          <label for="email" class="form-label">
+            <i class="fa-regular fa-envelope"></i>メールアドレス
+          </label>
+          <input 
+            type="email" 
+            id="email" 
+            v-model="email" 
+            class="form-input" 
+            placeholder="example@email.com"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="password" class="form-label">
+            <i class="fa-solid fa-key"></i>パスワード
+          </label>
+          <input 
+            type="password" 
+            id="password" 
+            v-model="password" 
+            class="form-input" 
+            required
+          >
+        </div>
+
+        <p v-if="errorMessage" class="login-error-message">
+          <i class="fa-solid fa-triangle-exclamation"></i> {{ errorMessage }}
+        </p>
+        
+        <div class="login-action-group">
+          <button type="button" @click="goBack" class="btn-cancel" :disabled="isLoading">
+            戻る
+          </button>
+          
+          <button type="submit" class="btn-login-submit" :disabled="isLoading">
+            <span v-if="isLoading"><i class="fa-solid fa-spinner fa-spin mr-2"></i>確認中...</span>
+            <span v-else>ログイン<i class="fa-solid fa-arrow-right-to-bracket ml-1"></i></span>
+          </button>
+        </div>
+        
+      </form>
+
+      <div class="auth-switch-link">
+        <p>新しく出展を希望される方は <a href="register.html">参入の申請（新規登録）</a> へ</p>
+      </div>
+    </div>
+
+    <div v-if="showBanModal" class="modal-overlay alert-overlay" @click="showBanModal = false">
+      <div class="modal-content ban-confirm-content" @click.stop>
+        <div class="alert-icon-wrap">
+          <i class="fa-solid fa-gavel"></i>
+        </div>
+        <h3 class="ban-confirm-title ban-notice-title">追放処分の通知</h3>
+        <p class="ban-confirm-message ban-notice-message">
+          指定されたメールアドレスは、当美術館の規律に基づき<strong>「追放処分」</strong>となっております。<br><br>
+          以降のログインおよび作品の追加展示を行うことはできません。<br>
+          追放の解除については <strong>ミヤビ</strong> 様にお問い合わせください。
+        </p>
+        <div class="ban-confirm-actions ban-notice-actions">
+          <button @click="showBanModal = false" class="btn-alert-cancel btn-ban-dismiss">戻る</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="login.js"></script>
+</body>
+</html>
