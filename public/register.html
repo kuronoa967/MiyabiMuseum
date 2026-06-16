@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>参入の申請 - ミヤビ美術館</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght=200;300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <link rel="stylesheet" href="mainstyle.css">
+</head>
+<body class="gallery-body login-page-body">
+
+  <div id="app" v-cloak>
+    <div class="login-container">
+      
+      <div class="login-header">
+        <h1 class="gallery-logo login-logo">出展者の新規登録</h1>
+        <div class="branding-line"></div>
+      </div>
+
+      <form @submit.prevent="submitRegister" class="login-card">
+        
+        <div class="form-group">
+          <label for="username" class="form-label">
+            <i class="fa-solid fa-user-pen"></i> 出展者名 (表示名)
+          </label>
+          <input 
+            type="text" 
+            id="username" 
+            v-model="username" 
+            class="form-input" 
+            placeholder="例: 名無しのVIPPER"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="email" class="form-label">
+            <i class="fa-regular fa-envelope"></i>メールアドレス
+          </label>
+          <input 
+            type="email" 
+            id="email" 
+            v-model="email" 
+            class="form-input" 
+            placeholder="example@email.com"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="password" class="form-label">
+            <i class="fa-solid fa-key"></i>パスワード
+          </label>
+          <input 
+            type="password" 
+            id="password" 
+            v-model="password" 
+            class="form-input" 
+            placeholder="8文字以上の英数字"
+            minlength="8"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="passwordConfirm" class="form-label">
+            <i class="fa-solid fa-shield-halved"></i> パスワードの確認
+          </label>
+          <input 
+            type="password" 
+            id="passwordConfirm" 
+            v-model="passwordConfirm" 
+            class="form-input" 
+            placeholder="もう一度同じパスワードを入力"
+            minlength="6"
+            required
+          >
+        </div>
+
+        <p v-if="errorMessage" class="login-error-message">
+          <i class="fa-solid fa-triangle-exclamation"></i> {{ errorMessage }}
+        </p>
+
+        <div class="login-action-group">
+          <button type="button" @click="goBack" class="btn-cancel" :disabled="isLoading">
+            戻る
+          </button>
+          
+          <button type="submit" class="btn-login-submit" :disabled="isLoading">
+            <span v-if="isLoading"><i class="fa-solid fa-spinner fa-spin mr-2"></i>申請中...</span>
+            <span v-else>登録する <i class="fa-solid fa-feather-pointed ml-1"></i></span>
+          </button>
+        </div>
+      </form>
+
+      <div class="auth-switch-link">
+        <p>既にアカウントをお持ちの方は <a href="login.html">ログイン</a> へ</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="register.js"></script>
+</body>
+</html>
