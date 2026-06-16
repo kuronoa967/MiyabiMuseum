@@ -2,12 +2,15 @@
   "name": "miyabimuseum",
   "version": "1.0.0",
   "description": "",
-  "main": "server.js", 
+  "main": "server.js",
   "scripts": {
-    "start": "node server.js" 
+    "start": "node server.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs"
+  "type": "commonjs",
+  "dependencies": {
+    "express": "^5.2.1"
+  }
 }
