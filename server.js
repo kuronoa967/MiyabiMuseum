@@ -6,6 +6,10 @@ const cloudinary = require('cloudinary').v2;
 
 const app = express();
 
+// ★追加：JSONデータの受け取り設定と静的ファイル設定
+app.use(express.json());
+app.use(express.static('public')); 
+
 // Firebaseの初期化
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 initializeApp({
@@ -13,14 +17,14 @@ initializeApp({
 });
 const db = getFirestore();
 
-// 2. Cloudinaryの設定
+// Cloudinaryの設定
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
-// 3. フロントに安全にFirebase設定を渡すAPI
+// フロントに安全にFirebase設定を渡すAPI
 app.get('/api/config', (req, res) => {
   res.json({
     apiKey: process.env.FIREBASE_APIKEY,
@@ -32,14 +36,13 @@ app.get('/api/config', (req, res) => {
   });
 });
 
-// 4. 追放リストをチェックするAPI
+// 追放リストをチェックするAPI
 app.post('/api/login-check', async (req, res) => {
   const { email } = req.body;
   try {
-    const db = admin.firestore();
+    // ★修正：admin.firestore() ではなく、初期化した db を使用
     const userDoc = await db.collection('users').doc(email).get();
     
-    // データが存在し、statusが 'banned' なら拒否
     if (userDoc.exists && userDoc.data().status === 'banned') {
       return res.status(403).json({ error: 'あなたは追放されています' });
     }
@@ -51,12 +54,11 @@ app.post('/api/login-check', async (req, res) => {
   }
 });
 
-// 5. ルート設定
+// ルート設定
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// ポート設定
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`美術館サーバーがポート ${PORT} で開館しました`);
