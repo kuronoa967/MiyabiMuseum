@@ -6,39 +6,62 @@ createApp({
     const password = ref('');
     const errorMessage = ref('');
     const isLoading = ref(false);
-    
-    // ★追加：追放ダイアログの表示状態を管理
     const showBanModal = ref(false);
-    
+
+    // 1. Renderサーバー経由でFirebase設定を安全に取得・初期化する
+    const initFirebase = async () => {
+      try {
+        const response = await fetch('/api/config');
+        const config = await response.json();
+        if (!firebase.apps.length) {
+          firebase.initializeApp(config);
+        }
+      } catch (error) {
+        console.error("Firebase初期化設定の取得に失敗しました:", error);
+      }
+    };
+
     const goBack = () => {
       window.location.href = 'index.html';
     };
 
-    const submitLogin = () => {
+    const submitLogin = async () => {
       errorMessage.value = '';
       isLoading.value = true;
 
-      setTimeout(() => {
-        isLoading.value = false;
+      try {
+        // Firebaseの初期化
+        await initFirebase();
+        const auth = firebase.auth();
+
+        // 2. Firebase Authenticationでログイン
+        await auth.signInWithEmailAndPassword(email.value, password.value);
         
-        // ★テスト用の追放（BAN）チェックシミュレーション
-        // 動作確認用：識別名に「banned@email.com」と入力した場合は追放ダイアログを出します
-        // （Firebase導入後は、取得したユーザーデータの status === 'banned' を判定してここに繋ぎます）
-        if (email.value === 'banned@email.com') {
+        // 3. Renderサーバーで「追放フラグ」をチェック
+        const response = await fetch('/api/login-check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email.value })
+        });
+
+        // 4. 403 Forbidden が返ってきたら追放(BAN)と判断
+        if (response.status === 403) {
+          await auth.signOut(); // 強制ログアウト
           showBanModal.value = true;
-          return; // 処理をここで中断してログインさせない
+          isLoading.value = false;
+          return;
         }
 
-        // テスト用の合言葉チェック（Firebase導入後はここを書き換えます）
-        if (password.value === 'password123') {
-          // ログイン成功の記憶をブラウザに刻む
-          localStorage.setItem('museum_logged_in', 'true');
-          // 展示室（index.html）へ戻る
-          window.location.href = 'index.html';
-        } else {
-          errorMessage.value = 'メールアドレス、またはパスワードが正しくありません。';
-        }
-      }, 1000);
+        // 5. ログイン成功
+        localStorage.setItem('museum_logged_in', 'true');
+        window.location.href = 'index.html';
+
+      } catch (error) {
+        console.error("ログインエラー:", error);
+        errorMessage.value = 'メールアドレス、またはパスワードが正しくありません。';
+      } finally {
+        isLoading.value = false;
+      }
     };
 
     return {
