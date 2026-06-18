@@ -10,8 +10,10 @@ app.use(express.static('public')); // publicフォルダを公開
 // 1. Firebase Admin SDKの初期化
 // ※Renderの環境変数に「GOOGLE_APPLICATION_CREDENTIALS」を設定するか、
 // サービスアカウントキーを適切な場所に置いて読み込む必要があります
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+
 admin.initializeApp({
-  credential: admin.credential.applicationDefault() 
+  credential: admin.credential.cert(serviceAccount)
 });
 
 // 2. Cloudinaryの設定
