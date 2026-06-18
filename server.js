@@ -1,20 +1,17 @@
 const express = require('express');
 const path = require('path');
-const admin = require('firebase-admin');
+const { initializeApp, cert } = require('firebase-admin/app');
+const { getFirestore } = require('firebase-admin/firestore');
 const cloudinary = require('cloudinary').v2;
 
 const app = express();
-app.use(express.json()); // JSONデータの受け取りを許可
-app.use(express.static('public')); // publicフォルダを公開
 
-// 1. Firebase Admin SDKの初期化
-// ※Renderの環境変数に「GOOGLE_APPLICATION_CREDENTIALS」を設定するか、
-// サービスアカウントキーを適切な場所に置いて読み込む必要があります
+// Firebaseの初期化
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
+initializeApp({
+  credential: cert(serviceAccount)
 });
+const db = getFirestore();
 
 // 2. Cloudinaryの設定
 cloudinary.config({
