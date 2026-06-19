@@ -8,7 +8,7 @@ createApp({
     const isLoading = ref(false);
     const showBanModal = ref(false);
 
-    // 1. Renderサーバー経由でFirebase設定を安全に取得・初期化する
+    // RenderサーバーからFirebase設定を取得して初期化
     const initFirebase = async () => {
       try {
         const response = await fetch('/api/config');
@@ -17,61 +17,62 @@ createApp({
           firebase.initializeApp(config);
         }
       } catch (error) {
-        console.error("Firebase初期化設定の取得に失敗しました:", error);
+        console.error("Firebase初期化失敗:", error);
+        throw error;
       }
     };
 
-    const goBack = () => {
-      window.location.href = 'index.html';
-    };
+    const goBack = () => { window.location.href = 'index.html'; };
 
     const submitLogin = async () => {
       errorMessage.value = '';
       isLoading.value = true;
 
       try {
-        // Firebaseの初期化
         await initFirebase();
         const auth = firebase.auth();
 
-        // 2. Firebase Authenticationでログイン
-        await auth.signInWithEmailAndPassword(email.value, password.value);
+        // 1. Firebase Authentication でログイン認証
+        const userCredential = await auth.signInWithEmailAndPassword(email.value, password.value);
+        const user = userCredential.user;
+
+        // 2. サーバー検証用のIDトークンを取得
+        const idToken = await user.getIdToken();
         
-        // 3. Renderサーバーで「追放フラグ」をチェック
+        // 3. RenderのBANチェックエンドポイントへ問い合わせ
         const response = await fetch('/api/login-check', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: email.value })
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${idToken}`
+          }
         });
 
-        // 4. 403 Forbidden が返ってきたら追放(BAN)と判断
+        // 4. BAN（403）を検知した場合
         if (response.status === 403) {
-          await auth.signOut(); // 強制ログアウト
+          await auth.signOut(); // セッションを即座に破棄
           showBanModal.value = true;
           isLoading.value = false;
           return;
         }
 
+        if (!response.ok) throw new Error('サーバーチェックに失敗しました');
+
         // 5. ログイン成功
-        localStorage.setItem('museum_logged_in', 'true');
         window.location.href = 'index.html';
 
       } catch (error) {
         console.error("ログインエラー:", error);
-        errorMessage.value = 'メールアドレス、またはパスワードが正しくありません。';
+        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+          errorMessage.value = 'メールアドレス、またはパスワードが正しくありません。';
+        } else {
+          errorMessage.value = 'ログイン処理中にエラーが発生しました。';
+        }
       } finally {
         isLoading.value = false;
       }
     };
 
-    return {
-      email,
-      password,
-      errorMessage,
-      isLoading,
-      showBanModal,
-      goBack,
-      submitLogin
-    };
+    return { email, password, errorMessage, isLoading, showBanModal, goBack, submitLogin };
   }
 }).mount('#app');

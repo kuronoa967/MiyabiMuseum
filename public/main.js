@@ -3,45 +3,46 @@ const { createApp, ref, computed, onMounted } = Vue;
 createApp({
   setup() {
     // --- 認証・権限状態 ---
-    const isLoggedIn = ref(true);             // 動作確認のため初期値をtrueにしています
-    const username = ref('ミヤビ');            // ログイン中の名前
-    const currentUserRole = ref('admin');     // 館長（支配人）で固定
-    const currentUserId = ref('user_miyabi'); // ログイン中のユーザー固有ID
+    const isLoggedIn = ref(false);             
+    const username = ref('ゲスト');            
+    const currentUserRole = ref('guest');     // guest, user, admin
+    const currentUserId = ref(''); 
 
-    // --- 各種状態管理 ---
+    // --- データベース連動状態 ---
     const photos = ref([]);
+    const usersList = ref([]); // Firestoreからリアルタイム取得
     const selectedPhoto = ref(null);
-    const showAdminPanel = ref(false);        // 管理パネルの開閉状態
+    const showAdminPanel = ref(false);        
     const currentPage = ref(1);
     const itemsPerPage = 24;
 
-    // --- 新設：絞り込み用の状態 ---
-    const filterPinnedOnly = ref(false);       // 特別展示（ピン留め）のみ
-    const selectedUploader = ref('');          // 選択された作家
-    const selectedTag = ref('');               // 選択されたタグ
+    // --- 絞り込み用の状態 ---
+    const filterPinnedOnly = ref(false);       
+    const selectedUploader = ref('');          
+    const selectedTag = ref('');               
 
-    // --- カスタムBAN確認モーダルの状態管理 ---
-    const banConfirmModal = ref({
-      show: false,
-      user: null
-    });
-
-    // トースト通知
+    // --- BAN確認モーダルの状態 ---
+    const banConfirmModal = ref({ show: false, user: null });
     const toast = ref({ show: false, message: '' });
+
     const showToast = (msg) => {
       toast.value.message = msg;
       toast.value.show = true;
       setTimeout(() => { toast.value.show = false; }, 3500);
     };
 
-    // --- 管理パネル用：出展者リストの模擬データ（館長自身は除外） ---
-    const usersList = ref([
-      { uid: 'user_01', username: '鈴木 花子', email: 'hanako@example.com', role: 'user', status: 'active' },
-      { uid: 'user_02', username: '田中 一郎', email: 'ichiro@example.com', role: 'user', status: 'active' },
-      { uid: 'user_03', username: '不適切アート狂', email: 'troll@example.com', role: 'user', status: 'banned' }
-    ]);
+    const initFirebase = async () => {
+      if (firebase.apps.length) return;
+      try {
+        const response = await fetch('/api/config');
+        const config = await response.json();
+        firebase.initializeApp(config);
+      } catch (error) {
+        console.error("Firebase初期化失敗:", error);
+      }
+    };
 
-    // --- 新設：存在する「作家」と「タグ」を自動でリスト化する（重複排除） ---
+    // --- 自動抽出フィルター ---
     const uniqueUploaders = computed(() => {
       const uploaders = photos.value.map(p => p.uploader).filter(Boolean);
       return [...new Set(uploaders)];
@@ -52,110 +53,101 @@ createApp({
       return [...new Set(tags)];
     });
 
-    // --- 写真データのアクション（特権・一般の制御） ---
-    const togglePin = (photo) => {
-      photo.isPinned = !photo.isPinned;
-      showToast(photo.isPinned ? `「${photo.title}」を特別展示に指定しました。` : '特別展示を解除しました。');
-    };
+    // --- リアルタイムデータの購読 (Firestore) ---
+    const subscribeData = () => {
+      const db = firebase.firestore();
 
-    const toggleHide = (photo) => {
-      photo.isHidden = !photo.isHidden;
-      showToast(photo.isHidden ? '作品をバックヤード（非表示）に保管しました。' : '作品を常設展示に戻しました。');
-    };
+      // 1. 作品コレクションのリアルタイム監視（時系列降順）
+      db.collection('artworks').orderBy('createdAt', 'desc').onSnapshot((snapshot) => {
+        const loadedPhotos = [];
+        snapshot.forEach((doc) => {
+          loadedPhotos.push({ id: doc.id, ...doc.data() });
+        });
+        photos.value = loadedPhotos;
+      }, (error) => {
+        console.error("作品データの同期エラー:", error);
+      });
 
-    const editPhoto = (photo) => {
-      showToast(`「${photo.title}」の編集の型を開きます。`);
-    };
-
-    const deletePhoto = (photo) => {
-      if (confirm(`「${photo.title}」の展示を取り下げますか？`)) {
-        photos.value = photos.value.filter(p => p.id !== photo.id);
-        showToast('展示を取り下げました。');
+      // 2. 管理者の場合のみ、全ユーザーリストをリアルタイム監視
+      if (currentUserRole.value === 'admin') {
+        db.collection('users').orderBy('createdAt', 'desc').onSnapshot((snapshot) => {
+          const loadedUsers = [];
+          snapshot.forEach((doc) => {
+            loadedUsers.push(doc.data());
+          });
+          usersList.value = loadedUsers;
+        });
       }
     };
 
-    // --- 管理パネル内の基本アクション ---
-    const openAdminPanel = () => { 
-      showAdminPanel.value = true; 
-      document.body.style.overflow = 'hidden'; // 背景スクロールをロック
+    // --- データベース書き込みアクション（Admin / User） ---
+    const togglePin = async (photo) => {
+      try {
+        const db = firebase.firestore();
+        await db.collection('artworks').doc(photo.id).update({ isPinned: !photo.isPinned });
+        showToast(!photo.isPinned ? `「${photo.title}」を特別展示に指定しました。` : '特別展示を解除しました。');
+      } catch (e) { showToast('権限または通信エラーが発生しました。'); }
     };
-    
-    const closeAdminPanel = () => { 
-      showAdminPanel.value = false; 
-      if (!selectedPhoto.value) {
-        document.body.style.overflow = '';      // 背景スクロールを解除
+
+    const toggleHide = async (photo) => {
+      try {
+        const db = firebase.firestore();
+        await db.collection('artworks').doc(photo.id).update({ isHidden: !photo.isHidden });
+        showToast(!photo.isHidden ? '作品をバックヤードに保管しました。' : '作品を常設展示に戻しました。');
+      } catch (e) { showToast('操作に失敗しました。'); }
+    };
+
+    const deletePhoto = async (photo) => {
+      if (confirm(`「${photo.title}」を削除しますか？（データベースから完全に削除されます）`)) {
+        try {
+          const db = firebase.firestore();
+          await db.collection('artworks').doc(photo.id).delete();
+          showToast('作品を削除しました。');
+          if (selectedPhoto.value?.id === photo.id) closeModal();
+        } catch (e) { showToast('削除権限がありません。'); }
       }
     };
 
-    // --- カスタムBAN確認モーダルの制御ロジック ---
-    const openBanConfirm = (user) => {
+    // --- BAN管理アクション ---
+    const openBanConfirm = async (user) => {
+      const db = firebase.firestore();
       if (user.status === 'banned') {
-        user.status = 'active';
-        showToast(`${user.username} 様の館内追放を解除しました。`);
+        // すでにBAN状態なら即時解除
+        await db.collection('users').doc(user.uid).update({ status: 'active' });
+        showToast(`${user.username} の追放を解除しました。`);
         return;
       }
-      banConfirmModal.value = {
-        show: true,
-        user: user
-      };
+      banConfirmModal.value = { show: true, user: user };
     };
 
-    const closeBanConfirm = () => {
-      banConfirmModal.value = {
-        show: false,
-        user: null
-      };
-    };
-
-    const executeBanUser = () => {
+    const executeBanUser = async () => {
       const user = banConfirmModal.value.user;
       if (user) {
-        user.status = 'banned';
-        showToast(`${user.username} 様を追放しました。展示の秩序が保たれました。`);
+        try {
+          const db = firebase.firestore();
+          await db.collection('users').doc(user.uid).update({ status: 'banned' });
+          showToast(`${user.username} を追放しました。`);
+        } catch (e) { showToast('追放処理に失敗しました。'); }
       }
       closeBanConfirm();
     };
 
-    // --- 【大幅アップデート】多重絞り込み＆権限チェックロジック ---
+    // --- 表示ロジック（多重フィルター） ---
     const filteredPhotos = computed(() => {
       let list = photos.value;
-
-      // 1. 権限フィルター（一般・ゲストユーザーはisHidden（バックヤード）を完全隠蔽）
       if (currentUserRole.value !== 'admin') {
-        list = list.filter(photo => !photo.isHidden);
+        list = list.filter(photo => !photo.isHidden); // 一般・ゲストには非表示（バックヤード）を隠蔽
       }
-
-      // 2. 特別展示（ピン留め）での絞り込み
-      if (filterPinnedOnly.value) {
-        list = list.filter(photo => photo.isPinned);
-      }
-
-      // 3. 作家（投稿者）での絞り込み
-      if (selectedUploader.value) {
-        list = list.filter(photo => photo.uploader === selectedUploader.value);
-      }
-
-      // 4. タグでの絞り込み
-      if (selectedTag.value) {
-        list = list.filter(photo => photo.tags && photo.tags.includes(selectedTag.value));
-      }
-
+      if (filterPinnedOnly.value) list = list.filter(photo => photo.isPinned);
+      if (selectedUploader.value) list = list.filter(photo => photo.uploader === selectedUploader.value);
+      if (selectedTag.value) list = list.filter(photo => photo.tags && photo.tags.includes(selectedTag.value));
       return list;
     });
 
-    // --- 新設：絞り込み変更時に白紙ページ化するのを防ぐリセット処理 ---
-    const resetPage = () => {
-      currentPage.value = 1;
-    };
-
-    // 2. 総ページ数の計算も、絞り込まれた写真の数をベースにする
     const totalPages = computed(() => Math.ceil(filteredPhotos.value.length / itemsPerPage) || 1);
-
-    // 3. 画面に表示する写真も、絞り込まれた写真からページ分を切り出す
     const displayedPhotos = computed(() => {
       const start = (currentPage.value - 1) * itemsPerPage;
-      const end = start + itemsPerPage;
-      return filteredPhotos.value.slice(start, end);
+      return filteredPhotos.value.slice(start, start + itemsPerPage);
     });
 
     const changePage = (page) => {
@@ -165,118 +157,71 @@ createApp({
       }
     };
 
+    const openAdminPanel = () => { showAdminPanel.value = true; document.body.style.overflow = 'hidden'; };
+    const closeAdminPanel = () => { showAdminPanel.value = false; if (!selectedPhoto.value) document.body.style.overflow = ''; };
+    const closeBanConfirm = () => { banConfirmModal.value = { show: false, user: null }; };
     const goToLogin = () => { window.location.href = 'login.html'; };
     const goToUpload = () => { window.location.href = 'upload.html'; };
-    const handleLogout = () => { showToast('ログアウトしました。'); isLoggedIn.value = false; };
-    
-    const openModal = (photo) => { 
-      if(!photo.isHidden || currentUserRole.value === 'admin') {
-        selectedPhoto.value = photo; 
-        document.body.style.overflow = 'hidden'; // 背景スクロールをロック
-      }
-    };
-    
-    const closeModal = () => { 
-      selectedPhoto.value = null; 
-      if (!showAdminPanel.value) {
-        document.body.style.overflow = '';      // 背景スクロールを解除
-      }
+    const resetPage = () => { currentPage.value = 1; };
+    const openModal = (photo) => { if(!photo.isHidden || currentUserRole.value === 'admin') { selectedPhoto.value = photo; document.body.style.overflow = 'hidden'; } };
+    const closeModal = () => { selectedPhoto.value = null; if (!showAdminPanel.value) document.body.style.overflow = ''; };
+
+    const handleLogout = async () => {
+      try {
+        await firebase.auth().signOut();
+        showToast('ログアウトしました。');
+      } catch (e) { showToast('ログアウトに失敗しました。'); }
     };
 
     const formatDate = (timestamp) => {
-      if (!timestamp) return '';
-      const date = new Date(timestamp.seconds * 1000);
+      if (!timestamp) return '読込中...';
+      const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp.seconds * 1000);
       return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
     };
 
-    // 模擬データの読み込み（役割判定用にuploaderId、さらにtagsとdescriptionを追加）
-    const loadDummyData = () => {
-      const basePhotos = [
-        { 
-          id: '1', 
-          uploaderId: 'user_miyabi', 
-          cloudinaryUrl: 'https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=1000&q=80', 
-          title: '深い森の呼吸', 
-          uploader: 'ミヤビ', 
-          createdAt: { seconds: 1770000000 }, 
-          isPinned: true, 
-          isHidden: false,
-          tags: ['静寂', '新緑', '朝靄'],
-          description: '朝の淡い光が木々をすり抜け、湿った苔の香りが立ち上る瞬間の記憶。深呼吸するたびに、雑音に満ちた心がゆっくりと澄んでいくのを感じる。'
-        },
-        { 
-          id: '2', 
-          uploaderId: 'user_01', 
-          cloudinaryUrl: 'https://images.unsplash.com/photo-1547891654-e66ed7ebb968?w=800&q=80', 
-          title: '色彩の溶融', 
-          uploader: '鈴木 花子', 
-          createdAt: { seconds: 1770100000 }, 
-          isPinned: false, 
-          isHidden: false,
-          tags: ['抽象', '夕暮れ', '情熱'],
-          description: '空と街の境界線が溶け合うマジックアワー。一日の終わりに訪れる切なさと、内なる情熱の起伏をパレットナイフにのせて重ね合わせたような景色。'
-        },
-        { 
-          id: '3', 
-          uploaderId: 'user_02', 
-          cloudinaryUrl: 'https://images.unsplash.com/photo-1579783922669-a951f044c32a?w=800&q=80', 
-          title: '琥珀色の午後', 
-          uploader: '田中 一郎', 
-          createdAt: { seconds: 1770200000 }, 
-          isPinned: false, 
-          isHidden: true,
-          tags: ['純喫茶', '光と影', 'ノスタルジー'],
-          description: '古い名曲がレコードから流れる純喫茶の片隅。窓から差し込む深い西日によって、琥珀色の珈琲がまるで宝石のようにきらめいていた。'
+    // --- ライフサイクル（認証の監視とデータ購読） ---
+    onMounted(async () => {
+      await initFirebase();
+      
+      firebase.auth().onAuthStateChanged(async (user) => {
+        if (user) {
+          currentUserId.value = user.uid;
+          isLoggedIn.value = true;
+          
+          try {
+            const db = firebase.firestore();
+            const userDoc = await db.collection('users').doc(user.uid).get();
+
+            if (userDoc.exists) {
+              const userData = userDoc.data();
+              if (userData.status === 'banned') {
+                await firebase.auth().signOut();
+                window.location.href = 'login.html';
+                return;
+              }
+              username.value = userData.username || '名無しの作家';
+              currentUserRole.value = userData.role || 'user';
+            }
+          } catch (error) {
+            console.error("ユーザーロール取得エラー:", error);
+          }
+        } else {
+          isLoggedIn.value = false;
+          username.value = 'ゲスト';
+          currentUserRole.value = 'guest';
+          currentUserId.value = '';
         }
-      ];
+        // 認証状態が確定した後にデータのリアルタイム同期を開始
+        subscribeData();
+      });
+    });
 
-      const mockList = [];
-      for (let i = 0; i < 30; i++) {
-        const base = basePhotos[i % basePhotos.length];
-        mockList.push({ ...base, id: `${i + 1}`, title: i === 2 ? base.title : `${base.title} #${i + 1}` });
-      }
-      photos.value = mockList;
-    };
-
-    onMounted(() => { loadDummyData(); });
-
-    // HTML（Vueテンプレート）側へ公開する変数・メソッド群
     return {
-      isLoggedIn,
-      username,
-      currentUserRole,
-      currentUserId,
-      photos,
-      displayedPhotos,
-      selectedPhoto,
-      showAdminPanel,
-      banConfirmModal,
-      currentPage,
-      totalPages,
-      toast,
-      usersList,
-      filterPinnedOnly, // 追加
-      selectedUploader, // 追加
-      selectedTag,      // 追加
-      uniqueUploaders,  // 追加
-      uniqueTags,       // 追加
-      resetPage,        // 追加
-      formatDate,
-      openModal,
-      closeModal,
-      goToUpload,
-      changePage,
-      goToLogin,
-      handleLogout,
-      togglePin,
-      toggleHide,
-      editPhoto,
-      deletePhoto,
-      openAdminPanel,
-      closeAdminPanel,
-      openBanConfirm,
-      closeBanConfirm,
-      executeBanUser
+      isLoggedIn, username, currentUserRole, currentUserId, photos, displayedPhotos, selectedPhoto,
+      showAdminPanel, banConfirmModal, currentPage, totalPages, toast, usersList, filterPinnedOnly,
+      selectedUploader, selectedTag, uniqueUploaders, uniqueTags, resetPage, formatDate, openModal,
+      closeModal, goToUpload, changePage, goToLogin, handleLogout, togglePin, toggleHide, deletePhoto,
+      openAdminPanel, closeAdminPanel, openBanConfirm, closeBanConfirm, executeBanUser
     };
   }
 }).mount('#app');

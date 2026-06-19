@@ -9,49 +9,67 @@ createApp({
     const errorMessage = ref('');
     const isLoading = ref(false);
 
-    // ★追加：ログイン画面（または前の画面）に戻る処理
-    const goBack = () => {
-      // ログイン画面から来たケースが多いため、login.html へ戻すのが自然です
-      window.location.href = 'login.html';
+    const initFirebase = async () => {
+      try {
+        const response = await fetch('/api/config');
+        const config = await response.json();
+        if (!firebase.apps.length) firebase.initializeApp(config);
+      } catch (error) {
+        console.error("Firebase初期化失敗:", error);
+        throw error;
+      }
     };
 
-    const submitRegister = () => {
+    const goBack = () => { window.location.href = 'login.html'; };
+
+    const submitRegister = async () => {
       errorMessage.value = '';
 
-      // 1. パスワードの一致チェック
       if (password.value !== passwordConfirm.value) {
-        errorMessage.value = '再入力された合言葉が、最初のものと一致しません。';
+        errorMessage.value = '再入力されたパスワードが、最初のものと一致しません。';
         return;
       }
 
       isLoading.value = true;
 
-      // 2. 登録処理のシミュレーション
-      setTimeout(() => {
-        isLoading.value = false;
+      try {
+        await initFirebase();
+        const auth = firebase.auth();
+        const db = firebase.firestore();
 
-        console.log('--- 新規出展者の登録データ ---');
-        console.log('作家名:', username.value);
-        console.log('メールアドレス:', email.value);
-        console.log('パスワード:', password.value);
+        // 1. Firebase Authentication にユーザーを作成
+        const userCredential = await auth.createUserWithEmailAndPassword(email.value, password.value);
+        const user = userCredential.user;
 
-        // 登録成功と同時にログインした状態にする
-        localStorage.setItem('museum_logged_in', 'true');
-        
-        // メイン展示室（index.html）へ進む
+        // 2. Authのプロフィールに作家名（Display Name）を設定
+        await user.updateProfile({ displayName: username.value });
+
+        // 3. Firestore の users コレクションに権限メタデータを安全に格納
+        await db.collection('users').doc(user.uid).set({
+          uid: user.uid,
+          username: username.value,
+          email: email.value,
+          role: 'user',       // 初期ロールは一般作家
+          status: 'active',   // 初期状態はアクティブ
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
         window.location.href = 'index.html';
-      }, 1500);
+
+      } catch (error) {
+        console.error("登録エラー:", error);
+        if (error.code === 'auth/email-already-in-use') {
+          errorMessage.value = 'このメールアドレスは既に登録されています。';
+        } else if (error.code === 'auth/weak-password') {
+          errorMessage.value = 'パスワードが脆弱です。6文字以上で入力してください。';
+        } else {
+          errorMessage.value = '参入申請の処理中にエラーが発生しました。';
+        }
+      } finally {
+        isLoading.value = false;
+      }
     };
 
-    return {
-      username,
-      email,
-      password,
-      passwordConfirm,
-      errorMessage,
-      isLoading,
-      goBack,         // ★追加：HTML側から呼べるように開放
-      submitRegister
-    };
+    return { username, email, password, passwordConfirm, errorMessage, isLoading, goBack, submitRegister };
   }
 }).mount('#app');
