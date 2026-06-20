@@ -63,11 +63,21 @@ createApp({
 
       } catch (error) {
         console.error("ログインエラー:", error);
-        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-          errorMessage.value = 'メールアドレス、またはパスワードが正しくありません。';
+        
+        // ★修正：最新のFirebaseエラーコードに対応
+        if (error.code === 'auth/invalid-login-credentials' || 
+            error.code === 'auth/user-not-found' || 
+            error.code === 'auth/wrong-password') {
+          errorMessage.value = 'メールアドレスまたは合言葉（パスワード）が違います。';
+        } else if (error.code === 'auth/invalid-email') {
+          errorMessage.value = 'メールアドレスの形式が正しくありません。';
+        } else if (error.code === 'auth/user-disabled') {
+          errorMessage.value = 'このアカウントは無効化されています。';
         } else {
-          errorMessage.value = 'ログイン処理中にエラーが発生しました。';
+          // その他の予期せぬエラー
+          errorMessage.value = `ログイン処理中にエラーが発生しました（${error.message}）`;
         }
+
       } finally {
         isLoading.value = false;
       }
