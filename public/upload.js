@@ -9,6 +9,9 @@ createApp({
     const description = ref('');
     const tagsInput = ref('');
     const isLoading = ref(false);
+    
+    // ★追加：エラーメッセージを格納する変数
+    const errorMessage = ref('');
 
     // 既存タグ候補の動的管理
     const existingTags = ref(['純喫茶', '光と影', 'ノスタルジー', '風景', '日常', '和モダン', 'パロディ']);
@@ -26,9 +29,11 @@ createApp({
 
     const processFile = (file) => {
       if (!file || !file.type.startsWith('image/')) {
-        alert('画像ファイルを選択してください。');
+        // ★変更：alertを廃止
+        errorMessage.value = '画像ファイルを選択してください。';
         return;
       }
+      errorMessage.value = ''; // 正常なファイルならエラーを消す
       selectedFile.value = file;
       imagePreview.value = URL.createObjectURL(file);
     };
@@ -49,10 +54,13 @@ createApp({
       if (!selectedFile.value) return;
 
       isLoading.value = true;
+      errorMessage.value = ''; // ★追加：処理開始時にエラー表示をリセット
+
       const user = firebase.auth().currentUser;
       if (!user) {
-        alert("セッションが切れました。再度ログインしてください。");
-        window.location.href = 'login.html';
+        // ★変更：alertを廃止
+        errorMessage.value = "セッションが切れました。再度ログインしてください。";
+        isLoading.value = false;
         return;
       }
 
@@ -82,7 +90,15 @@ createApp({
           method: 'POST',
           body: formData
         });
+        
         const cloudinaryData = await cloudinaryRes.json();
+        
+        // ★追加：Cloudinaryが403などで弾いた場合、その詳細な理由を取り出して投げる
+        if (!cloudinaryRes.ok) {
+          console.error("Cloudinary詳細エラー:", cloudinaryData);
+          throw new Error(`Cloudinary通信エラー: ${cloudinaryData.error?.message || '署名が無効です'}`);
+        }
+
         if (!cloudinaryData.secure_url) throw new Error("画像の保存に失敗しました。");
 
         // 3. 成功したURLとパブリックIDをメタデータとしてFirestoreへ保存
@@ -94,9 +110,9 @@ createApp({
           description: description.value || '',
           tags: processedTags,
           cloudinaryUrl: cloudinaryData.secure_url,
-          cloudinaryPublicId: cloudinaryData.public_id, // 削除・検閲時にバックエンドから消すため保持
-          isPinned: false,  // 初期値は通常展示
-          isHidden: false,  // 初期値は公開表示
+          cloudinaryPublicId: cloudinaryData.public_id,
+          isPinned: false,  
+          isHidden: false,  
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
@@ -105,7 +121,8 @@ createApp({
 
       } catch (error) {
         console.error("出展エラー:", error);
-        alert("展示の準備中にエラーが発生しました。");
+        // ★変更：alertを廃止し、変数にエラー内容を入れる
+        errorMessage.value = error.message; 
       } finally {
         isLoading.value = false;
       }
@@ -113,14 +130,14 @@ createApp({
 
     onMounted(async () => {
       await initFirebase();
-      // これまでの全作品からタグ候補を動的に拡張収集するロジック（任意）
       firebase.auth().onAuthStateChanged((user) => {
-        if (!user) window.location.href = 'login.html'; // ガード
+        if (!user) window.location.href = 'login.html'; 
       });
     });
 
     return {
-      fileInput, selectedFile, imagePreview, title, description, tagsInput, isLoading,
+      fileInput, selectedFile, imagePreview, title, description, tagsInput, isLoading, 
+      errorMessage, // ★追加：HTML側に変数を渡す
       existingTags, selectedTags, triggerFileInput, handleFileSelect, handleDrop, toggleTag, goBack, submitUpload
     };
   }

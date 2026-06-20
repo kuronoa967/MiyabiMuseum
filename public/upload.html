@@ -119,6 +119,10 @@
           >
         </div>
 
+        <p v-if="errorMessage" class="login-error-message" style="margin-top: 1rem; margin-bottom: -1rem;">
+          <i class="fa-solid fa-triangle-exclamation"></i> {{ errorMessage }}
+        </p>
+
         <div class="upload-action-group">
           <button type="button" @click="goBack" class="btn-cancel" :disabled="isLoading">
             戻る

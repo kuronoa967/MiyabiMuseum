@@ -25,6 +25,11 @@ createApp({
     const submitRegister = async () => {
       errorMessage.value = '';
 
+    if (password.value.length < 8) {
+      errorMessage.value = 'パスワードは8文字以上で入力してください。';
+      return; // ここで処理を止める
+    }
+
       if (password.value !== passwordConfirm.value) {
         errorMessage.value = '再入力されたパスワードが、最初のものと一致しません。';
         return;
@@ -56,14 +61,16 @@ createApp({
 
         window.location.href = 'index.html';
 
-      } catch (error) {
+} catch (error) {
         console.error("登録エラー:", error);
         if (error.code === 'auth/email-already-in-use') {
-          errorMessage.value = 'このメールアドレスは既に登録されています。';
+          errorMessage.value = 'このメールアドレスは既に美術館に登録されています。';
         } else if (error.code === 'auth/weak-password') {
-          errorMessage.value = 'パスワードが脆弱です。6文字以上で入力してください。';
+          errorMessage.value = 'パスワードが脆弱です。8文字以上で入力してください。';
+        } else if (error.code === 'auth/invalid-email') { 
+          errorMessage.value = 'メールアドレスの形式が正しくありません。半角英数で正しく入力してください。';
         } else {
-          errorMessage.value = '参入申請の処理中にエラーが発生しました。';
+          errorMessage.value = '参入申請の処理中に構造上のエラーが発生しました。';
         }
       } finally {
         isLoading.value = false;
