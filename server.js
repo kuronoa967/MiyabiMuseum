@@ -96,9 +96,9 @@ app.get('/api/get-signature', authenticateToken, (req, res) => {
     
     // CloudinaryのAPIシークレット（秘密鍵）を使って時間制限付きの署名を生成
     const params = {
-      timestamp: timestamp
-      // もし特定のフォルダに保存したい場合は、以下のように指定できます
-      // folder: 'miyabi_museum' 
+      timestamp: timestamp,
+      // ★変更1：ここのコメントを外し、フォルダ名を「MiyabiMuseum」に指定する
+      folder: 'MiyabiMuseum' 
     };
 
     const signature = cloudinary.utils.api_sign_request(params, process.env.CLOUDINARY_API_SECRET);
@@ -108,8 +108,8 @@ app.get('/api/get-signature', authenticateToken, (req, res) => {
       signature: signature,
       timestamp: timestamp,
       apikey: process.env.CLOUDINARY_API_KEY,
-      cloudname: process.env.CLOUDINARY_CLOUD_NAME
-      // folder: 'miyabi_museum' // フォルダ指定した場合はここにも追加
+      cloudname: process.env.CLOUDINARY_CLOUD_NAME,
+      folder: 'MiyabiMuseum'
     });
   } catch (error) {
     console.error('署名生成エラー:', error);
