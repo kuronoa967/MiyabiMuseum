@@ -205,14 +205,19 @@ createApp({
           } catch (error) {
             console.error("ユーザーロール取得エラー:", error);
           }
+
+          // 【修正】ログインユーザー（一般・管理者）のロール取得が完了してから同期スタート
+          subscribeData();
+
         } else {
           isLoggedIn.value = false;
           username.value = 'ゲスト';
           currentUserRole.value = 'guest';
           currentUserId.value = '';
+
+          // 【修正】ゲストの場合もここで安全に同期スタート
+          subscribeData();
         }
-        // 認証状態が確定した後にデータのリアルタイム同期を開始
-        subscribeData();
       });
     });
 

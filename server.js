@@ -2,7 +2,7 @@ const express = require('express');
 const path = require('path');
 const { initializeApp, cert } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
-const { getAuth } = require('firebase-admin/auth'); // ★認証検証のために追加
+const { getAuth } = require('firebase-admin/auth');
 const cloudinary = require('cloudinary').v2;
 
 const app = express();
@@ -14,15 +14,15 @@ app.use(express.static('public')); // publicフォルダ内の静的ファイル
 // 1. 各種初期化設定
 // ==========================================================================
 
-// Firebaseの初期化
+// Firebaseの初期化（Renderの環境変数から認証情報を読み込み）
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 initializeApp({
   credential: cert(serviceAccount)
 });
 const db = getFirestore();
-const auth = getAuth(); // ★Firebase Admin Authのインスタンス化
+const auth = getAuth();
 
-// Cloudinaryの設定
+// Cloudinaryの設定（通常権限のAPIキーを使用）
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -32,10 +32,9 @@ cloudinary.config({
 // ==========================================================================
 // 2. 共通ミドルウェア（IDトークンの検証ガード）
 // ==========================================================================
-// 不正なアクセスや未ログインのアクセスをシャットアウトし、安全に uid を取得します。
 const authenticateToken = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // "Bearer <TOKEN>" からトークンのみ抽出
+  const token = authHeader && authHeader.split(' ')[1]; // "Bearer <TOKEN>" から抽出
 
   if (!token) {
     return res.status(401).json({ error: '認証トークンがありません。ログインしてください。' });
@@ -44,7 +43,7 @@ const authenticateToken = async (req, res, next) => {
   try {
     // Firebase Admin SDK でトークンの正当性を検証
     const decodedToken = await auth.verifyIdToken(token);
-    req.user = decodedToken; // 後続の処理で req.user.uid や req.user.email が使えるようになります
+    req.user = decodedToken; // 後続の処理で req.user.uid が使えるようになります
     next();
   } catch (error) {
     console.error('トークン検証エラー:', error);
@@ -56,7 +55,7 @@ const authenticateToken = async (req, res, next) => {
 // 3. APIエンドポイント（フロントエンドとの連動ロジック）
 // ==========================================================================
 
-// 【既存】フロントに安全にFirebase設定を渡すAPI（変更なし）
+// 【API①】フロントに安全にFirebase設定を渡す（ログイン画面やアップロード画面用）
 app.get('/api/config', (req, res) => {
   res.json({
     apiKey: process.env.FIREBASE_APIKEY,
@@ -68,19 +67,14 @@ app.get('/api/config', (req, res) => {
   });
 });
 
-// 【修正・セキュア化】追放リスト（BAN状態）をIDトークン基準でチェックするAPI
-// ボディではなく、ヘッダーに載せた認証トークンを使って厳格にチェックします。
+// 【API②】追放リスト（BAN状態）をチェックする
 app.post('/api/login-check', authenticateToken, async (req, res) => {
-  const uid = req.user.uid; // ミドルウェアで解析された安全なUID
-
+  const uid = req.user.uid;
   try {
-    // Firestore の users コレクションから、ドキュメント名が UID になっているものを取得
     const userDoc = await db.collection('users').doc(uid).get();
-    
     if (userDoc.exists && userDoc.data().status === 'banned') {
       return res.status(403).json({ error: '当美術館の規律に基づき、あなたのアカウントは追放されています。' });
     }
-    
     res.json({ status: 'ok' });
   } catch (error) {
     console.error('ログインチェックエラー:', error);
@@ -88,28 +82,27 @@ app.post('/api/login-check', authenticateToken, async (req, res) => {
   }
 });
 
-// 【新設】Cloudinaryへのダイレクトアップロード用「署名」を発行するAPI
-// 悪意ある第三者が勝手に画像を送りつけるのを防ぐため、ログイン済みのユーザーにのみ署名を発行します。
+// 【API③★修正版】Cloudinaryへのダイレクトアップロード用「署名」を発行する
 app.get('/api/get-signature', authenticateToken, (req, res) => {
   try {
     const timestamp = Math.round((new Date()).getTime() / 1000);
     
-    // CloudinaryのAPIシークレット（秘密鍵）を使って時間制限付きの署名を生成
+    // 署名に「MiyabiMuseum」フォルダを強制バインド
     const params = {
       timestamp: timestamp,
-      // ★変更1：ここのコメントを外し、フォルダ名を「MiyabiMuseum」に指定する
       folder: 'MiyabiMuseum' 
     };
 
+    // サーバーに秘匿されたAPI_SECRETを使って安全に署名を生成
     const signature = cloudinary.utils.api_sign_request(params, process.env.CLOUDINARY_API_SECRET);
     
-    // フロントエンド（upload.js）が必要とするキー情報をすべて返却
+    // フロント（upload.js）がアップロードを完了させるためのセットを返却
     res.json({
       signature: signature,
       timestamp: timestamp,
       apikey: process.env.CLOUDINARY_API_KEY,
       cloudname: process.env.CLOUDINARY_CLOUD_NAME,
-      folder: 'MiyabiMuseum'
+      folder: 'MiyabiMuseum' // フロントにフォルダ名を伝えることで自動連携
     });
   } catch (error) {
     console.error('署名生成エラー:', error);
@@ -121,12 +114,12 @@ app.get('/api/get-signature', authenticateToken, (req, res) => {
 // 4. ルート設定・サーバー起動
 // ==========================================================================
 
-// ルート設定（インデックス画面の返却）
+// メインのインデックス画面
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// その他のHTMLファイルに直接アクセスされた場合のルーティング補助（任意）
+// その他のHTMLファイル（upload.html や login.html など）へのルーティング
 app.get('/:page.html', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', `${req.params.page}.html`));
 });
