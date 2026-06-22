@@ -15,6 +15,17 @@ createApp({
     const selectedTags = ref([]);
 
     // -----------------------------
+    // 共通ユーティリティ
+    // -----------------------------
+    const sanitize = (str) => {
+      if (!str) return '';
+      // script タグをざっくり除去（本格的にはサーバー側でもやる）
+      return str.replace(/<script.*?>.*?<\/script>/gi, '');
+    };
+
+    const allowedExt = ['jpg', 'jpeg', 'png', 'webp'];
+
+    // -----------------------------
     // Firebase 初期化
     // -----------------------------
     const initFirebase = async () => {
@@ -33,8 +44,21 @@ createApp({
     const triggerFileInput = () => fileInput.value.click();
 
     const processFile = (file) => {
-      if (!file || !file.type.startsWith('image/')) {
+      if (!file) {
         errorMessage.value = '画像ファイルを選択してください。';
+        return;
+      }
+
+      // MIME タイプチェック
+      if (!file.type.startsWith('image/')) {
+        errorMessage.value = '画像ファイルを選択してください。';
+        return;
+      }
+
+      // 拡張子チェック（簡易偽装対策）
+      const ext = file.name.split('.').pop().toLowerCase();
+      if (!allowedExt.includes(ext)) {
+        errorMessage.value = '対応していない画像形式です。（jpg / jpeg / png / webp）';
         return;
       }
 
@@ -45,6 +69,12 @@ createApp({
       }
 
       errorMessage.value = '';
+
+      // 既存のプレビューURLがあれば解放
+      if (imagePreview.value) {
+        URL.revokeObjectURL(imagePreview.value);
+      }
+
       selectedFile.value = file;
       imagePreview.value = URL.createObjectURL(file);
     };
@@ -56,8 +86,20 @@ createApp({
     // タグ処理（computed で簡潔に）
     // -----------------------------
     const processedTags = computed(() => {
-      const manual = tagsInput.value.split(/[,，\s]+/).filter(t => t.trim() !== '');
-      return [...new Set([...selectedTags.value, ...manual])];
+      const manual = tagsInput.value
+        .split(/[,，\s]+/)
+        .map(t => t.trim())
+        .filter(t => t !== '');
+
+      const merged = [...new Set([...selectedTags.value, ...manual])];
+
+      // タグ数制限（例：10個まで）
+      if (merged.length > 10) {
+        errorMessage.value = 'タグは10個までです。';
+        return merged.slice(0, 10);
+      }
+
+      return merged;
     });
 
     const toggleTag = (tag) => {
@@ -129,7 +171,12 @@ createApp({
         headers: { Authorization: `Bearer ${idToken}` }
       });
 
-      if (!res.ok) throw new Error("アップロード署名の取得に失敗しました。");
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("署名APIエラー詳細:", text);
+        throw new Error("アップロード署名の取得に失敗しました。");
+      }
+
       return res.json();
     };
 
@@ -142,7 +189,7 @@ createApp({
       formData.append('api_key', signData.apikey);
       formData.append('timestamp', signData.timestamp);
       formData.append('signature', signData.signature);
-      if (signData.folder) formData.append('folder', signData.folder);
+      // folder はサーバー側で preset に紐づけて固定する想定なので、ここでは渡さない
 
       const res = await fetch(`https://api.cloudinary.com/v1_1/${signData.cloudname}/image/upload`, {
         method: 'POST',
@@ -150,7 +197,15 @@ createApp({
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(`Cloudinaryエラー: ${data.error?.message}`);
+
+      if (!res.ok) {
+        console.error("Cloudinaryエラー詳細:", data);
+        throw new Error(`Cloudinaryエラー: ${data.error?.message || '不明なエラー'}`);
+      }
+
+      if (!data.secure_url || !data.public_id) {
+        throw new Error("Cloudinaryレスポンスが不正です。");
+      }
 
       return data;
     };
@@ -160,11 +215,26 @@ createApp({
     // -----------------------------
     const saveToFirestore = async (user, cloudinaryData) => {
       const db = firebase.firestore();
+
+      const safeTitle = sanitize(title.value);
+      const safeDescription = sanitize(description.value);
+
+      // 文字数制限
+      if (safeTitle.length > 100) {
+        throw new Error('タイトルが長すぎます（100文字以内）');
+      }
+      if (safeDescription.length > 500) {
+        throw new Error('説明文が長すぎます（500文字以内）');
+      }
+      if (processedTags.value.some(t => t.length > 20)) {
+        throw new Error('タグは1つ20文字以内にしてください。');
+      }
+
       return db.collection('artworks').add({
         uploaderId: user.uid,
         uploader: user.displayName || '名無しの出展者',
-        title: title.value || '無題',
-        description: description.value || '',
+        title: safeTitle || '無題',
+        description: safeDescription || '',
         tags: processedTags.value,
         cloudinaryUrl: cloudinaryData.secure_url,
         cloudinaryPublicId: cloudinaryData.public_id,
@@ -178,7 +248,11 @@ createApp({
     // 投稿処理
     // -----------------------------
     const submitUpload = async () => {
-      if (!selectedFile.value) return;
+      if (isLoading.value) return; // 連打防止
+      if (!selectedFile.value) {
+        errorMessage.value = '画像ファイルを選択してください。';
+        return;
+      }
 
       isLoading.value = true;
       errorMessage.value = '';
@@ -203,16 +277,21 @@ createApp({
 
       } catch (err) {
         console.error("出展エラー:", err);
-        errorMessage.value = err.message;
-
+        errorMessage.value = err.message || '予期せぬエラーが発生しました。';
+        // 失敗時は選択状態をクリアしておく
+        selectedFile.value = null;
+        if (imagePreview.value) {
+          URL.revokeObjectURL(imagePreview.value);
+          imagePreview.value = '';
+        }
       } finally {
         isLoading.value = false;
       }
     };
 
-  const goBack = () => {
-    window.location.href = 'index.html';
-  };
+    const goBack = () => {
+      window.location.href = 'index.html';
+    };
 
     // -----------------------------
     // 初期化
