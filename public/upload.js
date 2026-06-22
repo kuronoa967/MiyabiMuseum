@@ -9,12 +9,10 @@ createApp({
     const description = ref('');
     const tagsInput = ref('');
     const isLoading = ref(false);
-    
-    // ★追加：エラーメッセージを格納する変数
     const errorMessage = ref('');
 
     // 既存タグ候補の動的管理
-    const existingTags = ref(['純喫茶', '光と影', 'ノスタルジー', '風景', '日常', '和モダン', 'パロディ']);
+    const existingTags = ref(['日常', 'コスプレ', 'パロディ', 'ミヤビ展１', 'ミヤビ展２']);
     const selectedTags = ref([]);
 
     const initFirebase = async () => {
@@ -27,13 +25,47 @@ createApp({
 
     const triggerFileInput = () => { fileInput.value.click(); };
 
+    // --- ★【フロントエンド圧縮】画像をWebPに変換する関数 ---
+    const compressToWebP = (file) => {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = (event) => {
+          const img = new Image();
+          img.src = event.target.result;
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            
+            // 画質0.85（85%）のWebPに変換。見た目を損なわずに容量を大幅カット
+            canvas.toBlob((blob) => {
+              if (blob) {
+                // Cloudinaryが認識できるようにFileオブジェクトの形に再変換
+                const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".webp", {
+                  type: "image/webp"
+                });
+                resolve(compressedFile);
+              } else {
+                reject(new Error("画像の圧縮に失敗しました。"));
+              }
+            }, 'image/webp', 0.85);
+          };
+          img.onerror = (e) => reject(e);
+        };
+        reader.onerror = (e) => reject(e);
+      });
+    };
+
     const processFile = (file) => {
       if (!file || !file.type.startsWith('image/')) {
-        // ★変更：alertを廃止
         errorMessage.value = '画像ファイルを選択してください。';
         return;
       }
-      errorMessage.value = ''; // 正常なファイルならエラーを消す
+      errorMessage.value = '';
       selectedFile.value = file;
       imagePreview.value = URL.createObjectURL(file);
     };
@@ -49,16 +81,15 @@ createApp({
 
     const goBack = () => { window.location.href = 'index.html'; };
 
-    // --- 本番：Cloudinaryへの署名付きアップロード ＆ Firestore保存 ---
+    // --- 署名付きアップロード ＆ Firestore保存 ---
     const submitUpload = async () => {
       if (!selectedFile.value) return;
 
       isLoading.value = true;
-      errorMessage.value = ''; // ★追加：処理開始時にエラー表示をリセット
+      errorMessage.value = ''; 
 
       const user = firebase.auth().currentUser;
       if (!user) {
-        // ★変更：alertを廃止
         errorMessage.value = "セッションが切れました。再度ログインしてください。";
         isLoading.value = false;
         return;
@@ -69,7 +100,12 @@ createApp({
       const processedTags = [...new Set([...selectedTags.value, ...manualTags])];
 
       try {
-        // 1. RenderサーバーからセキュアにCloudinaryアップロード用署名(Signature)を取得
+        // ★【修正】：送信直前にフロント側でWebPに超圧縮をかける
+        errorMessage.value = '画像を最適化中...';
+        const webpFile = await compressToWebP(selectedFile.value);
+        errorMessage.value = ''; // リセット
+
+        // 1. RenderサーバーからCloudinaryアップロード用署名(Signature)を取得
         const idToken = await user.getIdToken();
         const signResponse = await fetch('/api/get-signature', {
           headers: { 'Authorization': `Bearer ${idToken}` }
@@ -78,13 +114,13 @@ createApp({
         if (!signResponse.ok) throw new Error("アップロード署名の取得に失敗しました。");
         const signData = await signResponse.json();
 
-        // 2. CloudinaryへFormDataを用いてダイレクトに署名付き送信
+        // 2. CloudinaryへFormDataを用いてダイレクトに送信
         const formData = new FormData();
-        formData.append('file', selectedFile.value);
+        formData.append('file', webpFile); // ★【修正】：圧縮済みのWebPファイルをセット
         formData.append('api_key', signData.apikey);
         formData.append('timestamp', signData.timestamp);
         formData.append('signature', signData.signature);
-        if(signData.folder) formData.append('folder', signData.folder);
+        if (signData.folder) formData.append('folder', signData.folder);
 
         const cloudinaryRes = await fetch(`https://api.cloudinary.com/v1_1/${signData.cloudname}/image/upload`, {
           method: 'POST',
@@ -93,7 +129,6 @@ createApp({
         
         const cloudinaryData = await cloudinaryRes.json();
         
-        // ★追加：Cloudinaryが403などで弾いた場合、その詳細な理由を取り出して投げる
         if (!cloudinaryRes.ok) {
           console.error("Cloudinary詳細エラー:", cloudinaryData);
           throw new Error(`Cloudinary通信エラー: ${cloudinaryData.error?.message || '署名が無効です'}`);
@@ -116,12 +151,10 @@ createApp({
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        // トップへ遷移
         window.location.href = 'index.html';
 
       } catch (error) {
         console.error("出展エラー:", error);
-        // ★変更：alertを廃止し、変数にエラー内容を入れる
         errorMessage.value = error.message; 
       } finally {
         isLoading.value = false;
@@ -137,8 +170,7 @@ createApp({
 
     return {
       fileInput, selectedFile, imagePreview, title, description, tagsInput, isLoading, 
-      errorMessage, // ★追加：HTML側に変数を渡す
-      existingTags, selectedTags, triggerFileInput, handleFileSelect, handleDrop, toggleTag, goBack, submitUpload
+      errorMessage, existingTags, selectedTags, triggerFileInput, handleFileSelect, handleDrop, toggleTag, goBack, submitUpload
     };
   }
 }).mount('#app');
