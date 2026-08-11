@@ -25,10 +25,10 @@ createApp({
     const submitRegister = async () => {
       errorMessage.value = '';
 
-    if (password.value.length < 8) {
-      errorMessage.value = 'パスワードは8文字以上で入力してください。';
-      return; // ここで処理を止める
-    }
+      if (password.value.length < 8) {
+        errorMessage.value = 'パスワードは8文字以上で入力してください。';
+        return;
+      }
 
       if (password.value !== passwordConfirm.value) {
         errorMessage.value = '再入力されたパスワードが、最初のものと一致しません。';
@@ -36,6 +36,7 @@ createApp({
       }
 
       isLoading.value = true;
+      let createdUser = null; // エラー時のロールバック用
 
       try {
         await initFirebase();
@@ -44,26 +45,47 @@ createApp({
 
         // 1. Firebase Authentication にユーザーを作成
         const userCredential = await auth.createUserWithEmailAndPassword(email.value, password.value);
-        const user = userCredential.user;
+        createdUser = userCredential.user;
 
         // 2. Authのプロフィールに作家名（Display Name）を設定
-        await user.updateProfile({ displayName: username.value });
+        await createdUser.updateProfile({ displayName: username.value });
 
-        // 3. Firestore の users コレクションに権限メタデータを安全に格納
-        await db.collection('users').doc(user.uid).set({
-          uid: user.uid,
-          username: username.value,
+        // 3. 一括書き込み（Batch）で users と usernames に同時保存
+        const batch = db.batch();
+        const cleanUsername = username.value.trim();
+        const lowerUsername = cleanUsername.toLowerCase(); // 重複防止用の小文字化ID
+
+        // users コレクションへの参照
+        const userRef = db.collection('users').doc(createdUser.uid);
+        batch.set(userRef, {
+          uid: createdUser.uid,
+          username: cleanUsername,
           email: email.value,
           role: 'user',       // 初期ロールは一般作家
           status: 'active',   // 初期状態はアクティブ
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
+        // usernames コレクションへの参照（ドキュメントIDを小文字のユーザー名にする）
+        const usernameRef = db.collection('usernames').doc(lowerUsername);
+        batch.set(usernameRef, {
+          uid: createdUser.uid
+        });
+
+        // ★ここで2つのデータを同時に書き込み（すでにユーザー名が存在すればルールで弾かれる）
+        await batch.commit();
+
         window.location.href = 'index.html';
 
-} catch (error) {
+      } catch (error) {
         console.error("登録エラー:", error);
-        if (error.code === 'auth/email-already-in-use') {
+
+        // ★ユーザー名重複（セキュリティルールで拒否）などでFirestore保存に失敗した場合
+        if (createdUser && (error.code === 'permission-denied' || error.message.includes('permission'))) {
+          // 作成されかけたAuthアカウントを消去して元に戻す（ロールバック）
+          await createdUser.delete().catch(() => {});
+          errorMessage.value = 'このユーザー名は既に使用されています。別の名前を入力してください。';
+        } else if (error.code === 'auth/email-already-in-use') {
           errorMessage.value = 'このメールアドレスは既に美術館に登録されています。';
         } else if (error.code === 'auth/weak-password') {
           errorMessage.value = 'パスワードが脆弱です。8文字以上で入力してください。';

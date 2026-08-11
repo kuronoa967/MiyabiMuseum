@@ -68,7 +68,7 @@ createApp({
         if (error.code === 'auth/invalid-login-credentials' || 
             error.code === 'auth/user-not-found' || 
             error.code === 'auth/wrong-password') {
-          errorMessage.value = 'メールアドレスまたは合言葉（パスワード）が違います。';
+          errorMessage.value = 'メールアドレスまたはパスワードが違います。';
         } else if (error.code === 'auth/invalid-email') {
           errorMessage.value = 'メールアドレスの形式が正しくありません。';
         } else if (error.code === 'auth/user-disabled') {
