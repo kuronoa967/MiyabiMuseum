@@ -199,8 +199,8 @@ app.get(
       signature,
       timestamp,
       apikey: process.env.CLOUDINARY_API_KEY,
-      cloudname: process.env.CLOUDINARY_CLOUD_NAME
-      // folder は返さない（フロントに触らせない）
+      cloudname: process.env.CLOUDINARY_CLOUD_NAME,
+      folder: 'MiyabiMuseum'   // ← 202行目の後にこの1行を追加
     });
   })
 );

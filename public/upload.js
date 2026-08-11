@@ -189,7 +189,7 @@ createApp({
       formData.append('api_key', signData.apikey);
       formData.append('timestamp', signData.timestamp);
       formData.append('signature', signData.signature);
-      // folder はサーバー側で preset に紐づけて固定する想定なので、ここでは渡さない
+      formData.append('folder', signData.folder);
 
       const res = await fetch(`https://api.cloudinary.com/v1_1/${signData.cloudname}/image/upload`, {
         method: 'POST',
