@@ -33,21 +33,21 @@ createApp({
     };
 
     // -----------------------------
-    // Firebase 初期化（/api/config を使わない）
-    // ※ index.html に firebaseConfig を埋め込んでおく想定
+    // Firebase 初期化（/api/config から取得）
     // -----------------------------
     const initFirebase = async () => {
-      // firebase SDK は index.html で読み込まれている前提
       if (!window.firebase) {
         console.error('Firebase SDK が読み込まれていません。index.html を確認してください。');
         return;
       }
       if (firebase.apps && firebase.apps.length) return;
+
       try {
-        if (typeof firebaseConfig === 'undefined') {
-          console.error('firebaseConfig が見つかりません。index.html に設定を埋めてください。');
-          return;
+        const res = await fetch('/api/config');
+        if (!res.ok) {
+          throw new Error('サーバーからFirebase設定を取得できませんでした。');
         }
+        const firebaseConfig = await res.json();
         firebase.initializeApp(firebaseConfig);
       } catch (error) {
         console.error('Firebase初期化失敗:', error);
@@ -100,7 +100,6 @@ createApp({
         });
 
       // 管理者の場合のみ、全ユーザーリストをリアルタイム監視
-      // 管理者購読は currentUserRole を監視して動的に登録/解除する
       if (currentUserRole.value === 'admin') {
         if (unsubUsers) { unsubUsers(); unsubUsers = null; }
         unsubUsers = db.collection('users').orderBy('createdAt', 'desc')
@@ -114,7 +113,6 @@ createApp({
             console.error('ユーザーデータの同期エラー:', error);
           });
       } else {
-        // admin でなければユーザー購読を解除
         if (unsubUsers) { unsubUsers(); unsubUsers = null; }
       }
     };
@@ -146,16 +144,12 @@ createApp({
       } catch (e) { showToast('削除権限がありません。'); }
     };
 
-    // --- BAN管理アクション（クライアントは Firestore を更新するだけでなく、サーバーに通知） ---
-    // 注意: カスタムクレーム（IDトークン）を更新するにはサーバー側で admin SDK を使う必要があるため、
-    // ここではサーバーのエンドポイントを呼び出してカスタムクレーム更新を依頼する。
+    // --- BAN管理アクション ---
     const openBanConfirm = async (user) => {
       const db = firebase.firestore();
       if (user.status === 'banned') {
-        // すでにBAN状態なら即時解除（Firestore の status を更新し、サーバーにも解除を依頼）
         try {
           await db.collection('users').doc(user.uid).update({ status: 'active' });
-          // サーバーに解除を依頼（認証トークン付き）
           await callServerBanApi(user.uid, 'unban');
           showToast(`${user.username} の追放を解除しました。`);
         } catch (e) {
@@ -171,9 +165,7 @@ createApp({
       if (user) {
         try {
           const db = firebase.firestore();
-          // 1) Firestore の status を更新（運用上の一次ソース）
           await db.collection('users').doc(user.uid).update({ status: 'banned' });
-          // 2) サーバーにカスタムクレーム更新を依頼（サーバー側で admin.auth().setCustomUserClaims を実行）
           await callServerBanApi(user.uid, 'ban');
           showToast(`${user.username} を追放しました。`);
         } catch (e) {
@@ -184,9 +176,7 @@ createApp({
       closeBanConfirm();
     };
 
-    // サーバーに BAN/UNBAN を依頼するユーティリティ
     const callServerBanApi = async (uid, action) => {
-      // action: 'ban' or 'unban'
       try {
         const user = firebase.auth().currentUser;
         if (!user) throw new Error('認証が必要です');
@@ -210,7 +200,7 @@ createApp({
       }
     };
 
-    // --- 表示ロジック（多重フィルター） ---
+    // --- 表示ロジック ---
     const filteredPhotos = computed(() => {
       let list = photos.value;
       if (currentUserRole.value !== 'admin') {
@@ -246,7 +236,6 @@ createApp({
 
     const handleLogout = async () => {
       try {
-        // 1) Firestore の購読を解除してからサインアウト
         cleanupSubscriptions();
         await firebase.auth().signOut();
         showToast('ログアウトしました。');
@@ -262,12 +251,11 @@ createApp({
       return `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
     };
 
-    // --- ライフサイクル（認証の監視とデータ購読） ---
+    // --- ライフサイクル ---
     onMounted(async () => {
       await initFirebase();
 
       firebase.auth().onAuthStateChanged(async (user) => {
-        // 購読の重複を避けるため、まず既存購読をクリア
         cleanupSubscriptions();
 
         if (user) {
@@ -281,7 +269,6 @@ createApp({
             if (userDoc.exists) {
               const userData = userDoc.data();
               if (userData.status === 'banned') {
-                // Firestore の status が banned なら即サインアウト
                 await firebase.auth().signOut();
                 window.location.href = 'login.html';
                 return;
@@ -289,14 +276,12 @@ createApp({
               username.value = userData.username || '名無しの作家';
               currentUserRole.value = userData.role || 'user';
             } else {
-              // ユーザードキュメントがない場合はデフォルト role を user にする
               currentUserRole.value = 'user';
             }
           } catch (error) {
             console.error('ユーザーロール取得エラー:', error);
           }
 
-          // ロールが決まったら購読開始
           subscribeData();
 
         } else {
@@ -305,15 +290,12 @@ createApp({
           currentUserRole.value = 'guest';
           currentUserId.value = '';
 
-          // ゲストでも作品は見たいので購読開始（ただし usersList は購読しない）
           subscribeData();
         }
       });
     });
 
-    // --- currentUserRole の変化に追従して users 購読を切り替える ---
-    watch(currentUserRole, (newRole, oldRole) => {
-      // subscribeData 内で admin 判定しているので再実行すれば適切に切り替わる
+    watch(currentUserRole, () => {
       subscribeData();
     });
 
