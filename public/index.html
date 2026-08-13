@@ -105,7 +105,13 @@
               <i class="fa-solid fa-thumbtack"></i>
             </div>
             <div class="museum-mat">
-              <img :src="photo.cloudinaryUrl" :alt="photo.title" class="photo-image" loading="lazy">
+              <img 
+                :src="photo.cloudinaryUrl" 
+                :alt="photo.title" 
+                class="photo-image" 
+                loading="lazy"
+                @error="$event.target.src='https://placehold.co/600x400/2a2a2a/ffffff?text=No+Image'"
+              >
               
               <div v-if="isLoggedIn" class="item-action-overlay" @click.stop>
                 <button v-if="currentUserRole === 'admin' || photo.uploaderId === currentUserId" @click="editPhoto(photo)" class="action-icon-btn" title="作品を編集">
@@ -272,11 +278,27 @@
     
   </div>
 
+  <!-- 1. Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
-  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <!-- 2. Firebase設定 (YOUR_... の部分を実際のFirebaseコンソールの値に置き換えてください) -->
+  <script>
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+  </script>
+
+  <!-- 3. Vue 3 (本番用ビルドで警告を防止) -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+
+  <!-- 4. メイン処理 -->
   <script src="main.js"></script>
 </body>
 </html>
