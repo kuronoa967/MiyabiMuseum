@@ -111,7 +111,7 @@
                 :alt="photo.title" 
                 class="photo-image" 
                 loading="lazy"
-                @error="handleImageError(photo.id)"
+                @error="handleImageError(photo.id, $event)"
               >
               
               <div v-if="isLoggedIn" class="item-action-overlay" @click.stop>

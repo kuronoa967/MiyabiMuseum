@@ -35,9 +35,16 @@ createApp({
     };
 
     // --- 画像読み込みエラー時のハンドラー ---
-    const handleImageError = (photoId) => {
+    const handleImageError = (photoId, event) => {
+      // 1. エラーIDを記録（一般ユーザーから非表示にするため）
       if (!brokenPhotoIds.value.includes(photoId)) {
         brokenPhotoIds.value.push(photoId);
+      }
+      
+      // 2. 管理者画面用にプレースホルダー画像へ差し替え
+      const placeholder = 'https://placehold.co/600x400/2a2a2a/ffffff?text=No+Image';
+      if (event && event.target && event.target.src !== placeholder) {
+        event.target.src = placeholder;
       }
     };
 
