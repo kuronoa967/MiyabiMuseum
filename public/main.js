@@ -1,4 +1,3 @@
-// main.js
 const { createApp, ref, computed, onMounted, watch } = Vue;
 
 createApp({
@@ -17,6 +16,9 @@ createApp({
     const currentPage = ref(1);
     const itemsPerPage = 24;
 
+    // --- 画像読み込みエラー（リンク切れ）状態 ---
+    const brokenPhotoIds = ref([]); // 読み込み失敗した画像IDを保持
+
     // --- 絞り込み用の状態 ---
     const filterPinnedOnly = ref(false);
     const selectedUploader = ref('');
@@ -30,6 +32,13 @@ createApp({
       toast.value.message = msg;
       toast.value.show = true;
       setTimeout(() => { toast.value.show = false; }, 3500);
+    };
+
+    // --- 画像読み込みエラー時のハンドラー ---
+    const handleImageError = (photoId) => {
+      if (!brokenPhotoIds.value.includes(photoId)) {
+        brokenPhotoIds.value.push(photoId);
+      }
     };
 
     // -----------------------------
@@ -86,7 +95,6 @@ createApp({
     const subscribeData = () => {
       const db = firebase.firestore();
 
-      // 既存購読があれば解除してから再登録（重複防止）
       if (unsubArtworks) { unsubArtworks(); unsubArtworks = null; }
       unsubArtworks = db.collection('artworks').orderBy('createdAt', 'desc')
         .onSnapshot((snapshot) => {
@@ -99,7 +107,6 @@ createApp({
           console.error('作品データの同期エラー:', error);
         });
 
-      // 管理者の場合のみ、全ユーザーリストをリアルタイム監視
       if (currentUserRole.value === 'admin') {
         if (unsubUsers) { unsubUsers(); unsubUsers = null; }
         unsubUsers = db.collection('users').orderBy('createdAt', 'desc')
@@ -117,7 +124,7 @@ createApp({
       }
     };
 
-    // --- データベース書き込みアクション（Admin / User） ---
+    // --- データベース書き込みアクション ---
     const togglePin = async (photo) => {
       try {
         const db = firebase.firestore();
@@ -200,12 +207,15 @@ createApp({
       }
     };
 
-    // --- 表示ロジック ---
+    // --- 表示ロジック（画像エラーのフィルターを追加） ---
     const filteredPhotos = computed(() => {
       let list = photos.value;
+      
       if (currentUserRole.value !== 'admin') {
-        list = list.filter(photo => !photo.isHidden);
+        // 一般ユーザーには バックヤード保管中 OR 画像リンク切れ の作品を非表示
+        list = list.filter(photo => !photo.isHidden && !brokenPhotoIds.value.includes(photo.id));
       }
+      
       if (filterPinnedOnly.value) list = list.filter(photo => photo.isPinned);
       if (selectedUploader.value) list = list.filter(photo => photo.uploader === selectedUploader.value);
       if (selectedTag.value) list = list.filter(photo => photo.tags && photo.tags.includes(selectedTag.value));
@@ -304,7 +314,8 @@ createApp({
       showAdminPanel, banConfirmModal, currentPage, totalPages, toast, usersList, filterPinnedOnly,
       selectedUploader, selectedTag, uniqueUploaders, uniqueTags, resetPage, formatDate, openModal,
       closeModal, goToUpload, changePage, goToLogin, handleLogout, togglePin, toggleHide, deletePhoto,
-      openAdminPanel, closeAdminPanel, openBanConfirm, closeBanConfirm, executeBanUser
+      openAdminPanel, closeAdminPanel, openBanConfirm, closeBanConfirm, executeBanUser,
+      brokenPhotoIds, handleImageError
     };
   }
 }).mount('#app');

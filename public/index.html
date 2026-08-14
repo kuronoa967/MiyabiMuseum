@@ -105,12 +105,13 @@
               <i class="fa-solid fa-thumbtack"></i>
             </div>
             <div class="museum-mat">
+              <!-- 画像読み込みエラー検知イベントを修正 -->
               <img 
                 :src="photo.cloudinaryUrl" 
                 :alt="photo.title" 
                 class="photo-image" 
                 loading="lazy"
-                @error="$event.target.src='https://placehold.co/600x400/2a2a2a/ffffff?text=No+Image'"
+                @error="handleImageError(photo.id)"
               >
               
               <div v-if="isLoggedIn" class="item-action-overlay" @click.stop>
@@ -136,6 +137,10 @@
             <h3 class="item-title">
               {{ photo.title || '無題' }}
               <span v-if="photo.isHidden" class="badge-hidden-text">(バックヤード保管中)</span>
+              <!-- 【追加】管理者にのみ表示される画像リンク切れ警告ラベル -->
+              <span v-if="brokenPhotoIds.includes(photo.id)" style="color: #e74c3c; font-size: 0.8rem; display: block; margin-top: 4px;">
+                <i class="fa-solid fa-triangle-exclamation"></i> 画像リンク切れ（管理者のみ表示中）
+              </span>
             </h3>
             
             <div v-if="photo.tags && photo.tags.length > 0" class="item-tags">
@@ -283,7 +288,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
-  <!-- 2. Firebase設定 (YOUR_... の部分を実際のFirebaseコンソールの値に置き換えてください) -->
+  <!-- 2. Firebase設定 -->
   <script>
     const firebaseConfig = {
       apiKey: "YOUR_API_KEY",
@@ -295,7 +300,7 @@
     };
   </script>
 
-  <!-- 3. Vue 3 (本番用ビルドで警告を防止) -->
+  <!-- 3. Vue 3 -->
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
 
   <!-- 4. メイン処理 -->
